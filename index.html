@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang="it" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>BOM-Trace Pro Mobile - Gestione Magazzino Elettronico</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        html {
+            -webkit-tap-highlight-color: transparent;
+        }
+        body {
+            overscroll-behavior-y: none;
+        }
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="h-full bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+
+    <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
+            <div class="flex items-center space-x-2.5">
+                <div class="bg-indigo-600 text-white w-9 h-9 sm:w-10 sm:h-10 rounded-xl shadow-md shadow-indigo-500/20 flex items-center justify-center">
+                    <i class="fa-solid fa-microchip text-base sm:text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-sm sm:text-base leading-tight text-slate-900 dark:text-white flex items-center gap-1.5">
+                        BOM-Trace <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold">Pro Mobile</span>
+                    </h1>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">Gestione ricambi & localizzazione gerarchica</p>
+                </div>
+            </div>
+            
+            <!-- Desktop Action Buttons -->
+            <div class="hidden md:flex items-center space-x-3">
+                <button onclick="openModal()" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm transition-all active:scale-95">
+                    <i class="fa-solid fa-plus"></i> Nuovo Componente
+                </button>
+                <div class="h-5 w-px bg-slate-200 dark:bg-slate-700"></div>
+                <button onclick="toggleDarkMode()" title="Cambia Tema" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <i class="fa-solid fa-moon dark:hidden text-base"></i>
+                    <i class="fa-solid fa-sun hidden dark:inline text-base text-amber-400"></i>
+                </button>
+            </div>
+
+            <!-- Mobile Quick Actions -->
+            <div class="flex md:hidden items-center space-x-1.5">
+                <button onclick="toggleDarkMode()" class="p-2 rounded-xl text-slate-600 dark:text-slate-300">
+                    <i class="fa-solid fa-moon dark:hidden text-base"></i>
+                    <i class="fa-solid fa-sun hidden dark:inline text-base text-amber-400"></i>
+                </button>
+                <button onclick="openModal()" class="w-9 h-9 bg-slate-800 dark:bg-slate-700 text-white rounded-xl flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-plus text-sm"></i>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 flex flex-col gap-4 pb-24 md:pb-6 overflow-y-auto">
+
+        <!-- TAB 1: INVENTORY -->
+        <div id="view-inventory" class="flex flex-col gap-4">
+            
+            <!-- Quick Stats Bar -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+                <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+                    <div class="p-2.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-xl">
+                        <i class="fa-solid fa-microchip text-base"></i>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Articoli</p>
+                        <h3 id="stat-total-types" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+                    <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-xl">
+                        <i class="fa-solid fa-cubes-stacked text-base"></i>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Pezzi Totali</p>
+                        <h3 id="stat-total-pieces" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">0</h3>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+                    <div class="p-2.5 bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 rounded-xl">
+                        <i class="fa-solid fa-euro-sign text-base"></i>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Valore Stock</p>
+                        <h3 id="stat-total-value" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">€ 0.00</h3>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
+                    <div class="p-2.5 bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 rounded-xl">
+                        <i class="fa-solid fa-triangle-exclamation text-base"></i>
+                    </div>
+                    <div>
+                        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Scorte Basse</p>
+                        <h3 id="stat-low-stock" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">0</h3>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Search & Filters Toolbar -->
+            <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-2.5">
+                <div class="relative w-full">
+                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
+                    <input type="text" id="search-input" oninput="filterInventory()" placeholder="Cerca componente, valore o posizione..." 
+                        class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white">
+                </div>
+                <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
+                    <select id="filter-sigla" onchange="filterInventory()" class="w-full sm:w-auto px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Tutte le Sigle</option>
+                        <option value="R">R (Resistore)</option>
+                        <option value="C">C (Condensatore)</option>
+                        <option value="IC">IC (Integrato)</option>
+                        <option value="Q">Q (Transistor)</option>
+                        <option value="D">D (Diodo/LED)</option>
+                        <option value="L">L (Induttore)</option>
+                        <option value="CON">CON (Connettore)</option>
+                        <option value="MISC">MISC (Altro)</option>
+                    </select>
+                    <select id="filter-tipo" onchange="filterInventory()" class="w-full sm:w-auto px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="">Tutti i Tipi</option>
+                        <option value="Resistenze">Resistenze</option>
+                        <option value="Condensatori">Condensatori</option>
+                        <option value="Semisonduttori / IC">Semisonduttori / IC</option>
+                        <option value="Transistor / FET">Transistor / FET</option>
+                        <option value="Diodi / LED">Diodi / LED</option>
+                        <option value="Connettori">Connettori</option>
+                        <option value="Elettromeccanica">Elettromeccanica</option>
+                    </select>
+                    <div class="col-span-2 flex items-center justify-end gap-1.5 sm:ml-auto pt-1 sm:pt-0">
+                        <button onclick="exportJSON()" title="Esporta Backup JSON" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs flex items-center gap-1.5"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Backup</span></button>
+                        <label title="Ripristina JSON" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs flex items-center gap-1.5 cursor-pointer">
+                            <i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Ripristina</span>
+                            <input type="file" id="import-file" accept=".json" onchange="importJSON(event)" class="hidden">
+                        </label>
+                        <button onclick="exportCSV()" title="Esporta CSV" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs flex items-center gap-1.5"><i class="fa-solid fa-file-csv"></i> <span class="hidden sm:inline">CSV</span></button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex flex-col gap-3">
+                <!-- Mobile Cards Container -->
+                <div id="mobile-cards-container" class="grid grid-cols-1 gap-2.5 md:hidden">
+                    <!-- Populated dynamically -->
+                </div>
+
+                <!-- Desktop Table Container -->
+                <div class="hidden md:block bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-left border-collapse">
+                            <thead>
+                                <tr class="bg-slate-50 dark:bg-slate-950/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
+                                    <th class="py-3 px-4 font-semibold">Componente / Descrizione</th>
+                                    <th class="py-3 px-4 font-semibold">Sigla / Tipo</th>
+                                    <th class="py-3 px-4 font-semibold">Valore</th>
+                                    <th class="py-3 px-4 font-semibold">Posizione</th>
+                                    <th class="py-3 px-4 font-semibold text-center">Quantità</th>
+                                    <th class="py-3 px-4 font-semibold text-right">Prezzo Unit. / Tot.</th>
+                                    <th class="py-3 px-4 font-semibold text-center">Azioni</th>
+                                </tr>
+                            </thead>
+                            <tbody id="inventory-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-sm">
+                                <!-- Populated via JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Empty State -->
+                <div id="empty-state" class="hidden flex-col items-center justify-center p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
+                    <div class="w-14 h-14 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-full flex items-center justify-center text-xl mb-3">
+                        <i class="fa-solid fa-box-open"></i>
+                    </div>
+                    <h3 class="font-semibold text-slate-700 dark:text-slate-200 text-sm">Nessun componente trovato</h3>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Aggiungi un nuovo ricambio usando il pulsante in basso.</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: CABINETS & LOCATIONS EXPLORER -->
+        <div id="view-cabinets" class="hidden flex-col gap-4">
+            <div class="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-4">
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-cubes text-indigo-600"></i> Mappa Contenitori & Cassetti
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Esplora i componenti raggruppati per contenitore fisico e cassetto</p>
+                </div>
+                <div id="cabinets-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-1">
+                    <!-- Populated via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: STATISTICS & LAB SUMMARY -->
+        <div id="view-stats" class="hidden flex-col gap-4">
+            <div class="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-4">
+                <div>
+                    <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <i class="fa-solid fa-chart-pie text-indigo-600"></i> Statistiche e Analisi Laboratorio
+                    </h2>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Riepilogo categorie, valore economico e stock critici</p>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
+                    <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col gap-2">
+                        <span class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Valore per Sigla Componente</span>
+                        <div id="stats-by-sigla" class="flex flex-col gap-2 mt-1">
+                            <!-- Populated via JS -->
+                        </div>
+                    </div>
+                    <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col gap-2">
+                        <span class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Gestione Dati & Manutenzione</span>
+                        <div class="flex flex-col gap-2.5 mt-1">
+                            <button onclick="resetDataToDemo()" class="w-full py-2.5 px-4 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors">
+                                <i class="fa-solid fa-rotate-right"></i> Ripristina Dati di Esempio
+                            </button>
+                            <button onclick="clearAllData()" class="w-full py-2.5 px-4 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors">
+                                <i class="fa-solid fa-trash-can"></i> Svuota Intero Magazzino
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-30 px-6 py-2 flex items-center justify-around shadow-lg">
+        <button onclick="switchTab('inventory')" id="nav-btn-inventory" class="flex flex-col items-center gap-1 text-indigo-600 dark:text-indigo-400 transition-colors">
+            <i class="fa-solid fa-boxes-stacked text-lg"></i>
+            <span class="text-[10px] font-semibold">Magazzino</span>
+        </button>
+        <button onclick="switchTab('cabinets')" id="nav-btn-cabinets" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+            <i class="fa-solid fa-cubes text-lg"></i>
+            <span class="text-[10px] font-semibold">Contenitori</span>
+        </button>
+        <button onclick="openModal()" class="flex flex-col items-center gap-1 text-white -mt-5">
+            <div class="w-12 h-12 bg-indigo-600 hover:bg-indigo-700 rounded-full shadow-lg shadow-indigo-500/40 flex items-center justify-center text-xl transition-transform active:scale-95">
+                <i class="fa-solid fa-plus"></i>
+            </div>
+            <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400">Nuovo</span>
+        </button>
+        <button onclick="switchTab('stats')" id="nav-btn-stats" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
+            <i class="fa-solid fa-chart-pie text-lg"></i>
+            <span class="text-[10px] font-semibold">Statistiche</span>
+        </button>
+    </nav>
+
+    <div id="component-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                <h3 id="modal-title" class="font-bold text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-circle-plus text-indigo-600"></i> Nuovo Componente
+                </h3>
+                <button onclick="closeModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            <form id="component-form" onsubmit="saveComponent(event)" class="p-4 sm:p-6 flex flex-col gap-3.5 overflow-y-auto">
+                <input type="hidden" id="comp-id">
+                
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Componente (Descrizione)</label>
+                    <input type="text" id="comp-name" required placeholder="es. Resistenza strato metallico 1/4W"
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Sigla Componente</label>
+                        <select id="comp-sigla" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
+                            <option value="R">R (Resistore)</option>
+                            <option value="C">C (Condensatore)</option>
+                            <option value="IC">IC (Integrato / Chip)</option>
+                            <option value="Q">Q (Transistor / FET)</option>
+                            <option value="D">D (Diodo / LED)</option>
+                            <option value="L">L (Induttore)</option>
+                            <option value="CON">CON (Connettore)</option>
+                            <option value="MISC">MISC (Altro)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tipo Componente</label>
+                        <input type="text" id="comp-tipo" required list="tipi-list" placeholder="es. Resistenze"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
+                        <datalist id="tipi-list">
+                            <option value="Resistenze">
+                            <option value="Condensatori">
+                            <option value="Semisonduttori / IC">
+                            <option value="Transistor / FET">
+                            <option value="Diodi / LED">
+                            <option value="Connettori">
+                            <option value="Elettromeccanica">
+                        </datalist>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Valore Elettrico / Sigla</label>
+                        <input type="text" id="comp-valore" required placeholder="es. 10kOhm o ESP32"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Prezzo Unitario (EUR)</label>
+                        <input type="number" step="0.001" min="0" id="comp-prezzo" required placeholder="0.05"
+                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Quantità in Stock</label>
+                    <input type="number" min="0" id="comp-quantita" required placeholder="50"
+                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
+                </div>
+
+                <div class="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 flex flex-col gap-2.5">
+                    <span class="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                        <i class="fa-solid fa-location-dot"></i> Posizione Fisica Gerarchica
+                    </span>
+                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-medium text-slate-600 dark:text-slate-400 mb-0.5">Contenitore / Box *</label>
+                            <input type="text" id="pos-contenitore" required placeholder="es. Box 1"
+                                class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-slate-600 dark:text-slate-400 mb-0.5">Cassetto (Opz.)</label>
+                            <input type="text" id="pos-cassetto" placeholder="es. Cassetto 3"
+                                class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-medium text-slate-600 dark:text-slate-400 mb-0.5">Divisore / Slot (Opz.)</label>
+                            <input type="text" id="pos-divisore" placeholder="es. Slot B"
+                                class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-2.5 pt-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        Annulla
+                    </button>
+                    <button type="submit" class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all active:scale-95">
+                        Salva Componente
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast-notification" class="fixed bottom-20 md:bottom-6 right-4 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
+        <div id="toast-content" class="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl bg-slate-900 text-white border border-slate-700 text-xs sm:text-sm">
+            <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
+            <span id="toast-message">Operazione completata con successo</span>
+        </div>
+    </div>
+
+    <script>
+        const defaultComponents = [
+            {
+                id: "comp-1",
+                name: "Resistenza strato metallico 1/4W 1%",
+                sigla: "R",
+                tipo: "Resistenze",
+                valore: "10kOhm",
+                prezzo: 0.015,
+                quantita: 120,
+                contenitore: "Box Cassettiera A",
+                cassetto: "Cassetto 01",
+                divisore: "Slot A2"
+            },
+            {
+                id: "comp-2",
+                name: "Condensatore Ceramico Multilayers",
+                sigla: "C",
+                tipo: "Condensatori",
+                valore: "100nF",
+                prezzo: 0.04,
+                quantita: 3,
+                contenitore: "Box Cassettiera A",
+                cassetto: "Cassetto 02",
+                divisore: "Slot B1"
+            },
+            {
+                id: "comp-3",
+                name: "Microcontrollore ESP32 WiFi+BT",
+                sigla: "IC",
+                tipo: "Semisonduttori / IC",
+                valore: "ESP32-WROOM",
+                prezzo: 4.50,
+                quantita: 8,
+                contenitore: "Valigetta Componenti",
+                cassetto: "Scomparto Centrale",
+                divisore: "Antistatico 1"
+            },
+            {
+                id: "comp-4",
+                name: "Transistor NPN Switching",
+                sigla: "Q",
+                tipo: "Transistor / FET",
+                valore: "2N2222A",
+                prezzo: 0.08,
+                quantita: 35,
+                contenitore: "Box Cassettiera B",
+                cassetto: "Cassetto 04",
+                divisore: "Divisore Sinistro"
+            },
+            {
+                id: "comp-5",
+                name: "LED Alta Luminosità 5mm Rosso",
+                sigla: "D",
+                tipo: "Diodi / LED",
+                valore: "LED 5mm Rosso",
+                prezzo: 0.03,
+                quantita: 2,
+                contenitore: "Box Cassettiera B",
+                cassetto: "Cassetto 06",
+                divisore: "Slot C"
+            }
+        ];
+
+        let inventory = [];
+
+        window.onload = function() {
+            loadData();
+            initTheme();
+            renderInventory();
+            updateStats();
+            renderCabinets();
+            renderStatsTab();
+        };
+
+        function loadData() {
+            const saved = localStorage.getItem('bom_trace_mobile_inventory');
+            if (saved) {
+                try {
+                    inventory = JSON.parse(saved);
+                } catch(e) {
+                    inventory = defaultComponents;
+                }
+            } else {
+                inventory = defaultComponents;
+                saveData();
+            }
+        }
+
+        function saveData() {
+            localStorage.setItem('bom_trace_mobile_inventory', JSON.stringify(inventory));
+            updateStats();
+            renderCabinets();
+            renderStatsTab();
+        }
+
+        function resetDataToDemo() {
+            inventory = defaultComponents;
+            saveData();
+            renderInventory();
+            showToast("Dati di esempio ripristinati", "success");
+        }
+
+        function clearAllData() {
+            inventory = [];
+            saveData();
+            renderInventory();
+            showToast("Magazzino svuotato", "error");
+        }
+
+        function initTheme() {
+            if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        }
+
+        function toggleDarkMode() {
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+            }
+        }
+
+        function switchTab(tabName) {
+            const invView = document.getElementById('view-inventory');
+            const cabView = document.getElementById('view-cabinets');
+            const statsView = document.getElementById('view-stats');
+            
+            const btnInv = document.getElementById('nav-btn-inventory');
+            const btnCab = document.getElementById('nav-btn-cabinets');
+            const btnStats = document.getElementById('nav-btn-stats');
+
+            invView.classList.add('hidden');
+            cabView.classList.add('hidden');
+            statsView.classList.add('hidden');
+
+            if (btnInv) btnInv.className = "flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors";
+            if (btnCab) btnCab.className = "flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors";
+            if (btnStats) btnStats.className = "flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors";
+
+            if (tabName === 'inventory') {
+                invView.classList.remove('hidden');
+                if (btnInv) btnInv.className = "flex flex-col items-center gap-1 text-indigo-600 dark:text-indigo-400 transition-colors";
+                renderInventory();
+            } else if (tabName === 'cabinets') {
+                cabView.classList.remove('hidden');
+                if (btnCab) btnCab.className = "flex flex-col items-center gap-1 text-indigo-600 dark:text-indigo-400 transition-colors";
+                renderCabinets();
+            } else if (tabName === 'stats') {
+                statsView.classList.remove('hidden');
+                if (btnStats) btnStats.className = "flex flex-col items-center gap-1 text-indigo-600 dark:text-indigo-400 transition-colors";
+                renderStatsTab();
+            }
+        }
+
+        function renderInventory(filteredList = null) {
+            const list = filteredList || inventory;
+            const mobileCardsContainer = document.getElementById('mobile-cards-container');
+            const tbody = document.getElementById('inventory-table-body');
+            const emptyState = document.getElementById('empty-state');
+            
+            mobileCardsContainer.innerHTML = '';
+            tbody.innerHTML = '';
+
+            if (list.length === 0) {
+                emptyState.classList.remove('hidden');
+                emptyState.classList.add('flex');
+                return;
+            } else {
+                emptyState.classList.remove('flex');
+                emptyState.classList.add('hidden');
+            }
+
+            list.forEach(item => {
+                const isLowStock = item.quantita < 5;
+                const totalValue = (item.quantita * item.prezzo).toFixed(2);
+                const locationLabel = formatLocation(item.contenitore, item.cassetto, item.divisore);
+
+                const card = document.createElement('div');
+                card.className = "bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-3";
+                card.innerHTML = `
+                    <div class="flex items-start justify-between gap-2">
+                        <div>
+                            <div class="flex items-center gap-1.5 mb-1">
+                                <span class="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-[11px]">${escapeHTML(item.sigla)}</span>
+                                <span class="text-[11px] text-slate-500 dark:text-slate-400">${escapeHTML(item.tipo)}</span>
+                            </div>
+                            <h4 class="font-bold text-sm text-slate-900 dark:text-white leading-snug">${escapeHTML(item.name)}</h4>
+                        </div>
+                        <div class="text-right shrink-0">
+                            <span class="font-bold text-sm text-slate-900 dark:text-white">&euro; ${totalValue}</span>
+                            <div class="text-[10px] text-slate-400 font-mono">&euro; ${Number(item.prezzo).toFixed(3)}/cad</div>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-800/80">
+                        <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg text-slate-700 dark:text-slate-300 font-semibold">${escapeHTML(item.valore)}</span>
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50 truncate max-w-[160px]">
+                            <i class="fa-solid fa-location-dot text-[9px]"></i> ${escapeHTML(locationLabel)}
+                        </span>
+                    </div>
+
+                    <div class="flex items-center justify-between pt-1">
+                        <div class="flex items-center gap-2">
+                            <span class="text-xs text-slate-500">Q.tà:</span>
+                            <div class="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
+                                <button onclick="quickUpdateQty('${item.id}', -1)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-xs flex items-center justify-center text-xs active:scale-95"><i class="fa-solid fa-minus"></i></button>
+                                <span class="font-bold w-7 text-center text-xs ${isLowStock ? 'text-rose-600 font-extrabold' : 'text-slate-800 dark:text-slate-200'}">${item.quantita}</span>
+                                <button onclick="quickUpdateQty('${item.id}', 1)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-xs flex items-center justify-center text-xs active:scale-95"><i class="fa-solid fa-plus"></i></button>
+                            </div>
+                            ${isLowStock ? '<span class="text-[10px] text-rose-500 font-semibold">Scorta bassa!</span>' : ''}
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="editComponent('${item.id}')" title="Modifica" class="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><i class="fa-solid fa-pen text-xs"></i></button>
+                            <button onclick="deleteComponent('${item.id}')" title="Elimina" class="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"><i class="fa-solid fa-trash text-xs"></i></button>
+                        </div>
+                    </div>
+                `;
+                mobileCardsContainer.appendChild(card);
+
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors";
+                tr.innerHTML = `
+                    <td class="py-3 px-4">
+                        <div class="font-semibold text-slate-900 dark:text-white">${escapeHTML(item.name)}</div>
+                        <div class="text-[11px] text-slate-400">ID: ${item.id}</div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <div class="flex items-center gap-1.5">
+                            <span class="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-xs">${escapeHTML(item.sigla)}</span>
+                            <span class="text-xs text-slate-500 dark:text-slate-400">${escapeHTML(item.tipo)}</span>
+                        </div>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-mono text-xs font-semibold">${escapeHTML(item.valore)}</span>
+                    </td>
+                    <td class="py-3 px-4">
+                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
+                            <i class="fa-solid fa-location-dot text-[10px]"></i> ${escapeHTML(locationLabel)}
+                        </span>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="inline-flex items-center gap-2">
+                            <button onclick="quickUpdateQty('${item.id}', -1)" class="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 flex items-center justify-center text-xs transition-colors"><i class="fa-solid fa-minus"></i></button>
+                            <span class="font-bold w-8 text-center ${isLowStock ? 'text-rose-600 font-extrabold' : 'text-slate-800 dark:text-slate-200'}">${item.quantita}</span>
+                            <button onclick="quickUpdateQty('${item.id}', 1)" class="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 flex items-center justify-center text-xs transition-colors"><i class="fa-solid fa-plus"></i></button>
+                        </div>
+                        ${isLowStock ? '<div class="text-[10px] text-rose-500 font-semibold mt-0.5">Scorta bassa!</div>' : ''}
+                    </td>
+                    <td class="py-3 px-4 text-right">
+                        <div class="font-semibold text-slate-900 dark:text-white">&euro; ${totalValue}</div>
+                        <div class="text-[11px] text-slate-400 font-mono">&euro; ${Number(item.prezzo).toFixed(3)}/cad</div>
+                    </td>
+                    <td class="py-3 px-4 text-center">
+                        <div class="flex items-center justify-center gap-1">
+                            <button onclick="editComponent('${item.id}')" title="Modifica" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><i class="fa-solid fa-pen"></i></button>
+                            <button onclick="deleteComponent('${item.id}')" title="Elimina" class="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"><i class="fa-solid fa-trash"></i></button>
+                        </div>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function formatLocation(box, drawer, divider) {
+            let parts = [box];
+            if (drawer && drawer.trim() !== '') parts.push(drawer);
+            if (divider && divider.trim() !== '') parts.push(divider);
+            return parts.join(' > ');
+        }
+
+        function filterInventory() {
+            const query = document.getElementById('search-input').value.toLowerCase();
+            const siglaFilter = document.getElementById('filter-sigla').value;
+            const tipoFilter = document.getElementById('filter-tipo').value;
+
+            const filtered = inventory.filter(item => {
+                const matchQuery = item.name.toLowerCase().includes(query) ||
+                                   item.valore.toLowerCase().includes(query) ||
+                                   item.contenitore.toLowerCase().includes(query) ||
+                                   (item.cassetto && item.cassetto.toLowerCase().includes(query)) ||
+                                   (item.divisore && item.divisore.toLowerCase().includes(query));
+                const matchSigla = siglaFilter === "" || item.sigla === siglaFilter;
+                const matchTipo = tipoFilter === "" || item.tipo === tipoFilter;
+
+                return matchQuery && matchSigla && matchTipo;
+            });
+
+            renderInventory(filtered);
+        }
+
+        function updateStats() {
+            const totalTypes = inventory.length;
+            const totalPieces = inventory.reduce((sum, item) => sum + Number(item.quantita), 0);
+            const totalValue = inventory.reduce((sum, item) => sum + (Number(item.quantita) * Number(item.prezzo)), 0);
+            const lowStockCount = inventory.filter(item => item.quantita < 5).length;
+
+            document.getElementById('stat-total-types').innerText = totalTypes;
+            document.getElementById('stat-total-pieces').innerText = totalPieces;
+            document.getElementById('stat-total-value').innerText = `\u20ac ${totalValue.toFixed(2)}`;
+            document.getElementById('stat-low-stock').innerText = lowStockCount;
+        }
+
+        function renderCabinets() {
+            const grid = document.getElementById('cabinets-grid');
+            grid.innerHTML = '';
+
+            const cabinetsMap = {};
+            inventory.forEach(item => {
+                const box = item.contenitore || "Senza Contenitore";
+                if (!cabinetsMap[box]) cabinetsMap[box] = [];
+                cabinetsMap[box].push(item);
+            });
+
+            const keys = Object.keys(cabinetsMap);
+            if (keys.length === 0) {
+                grid.innerHTML = `<div class="col-span-full p-8 text-center text-slate-400 text-xs">Nessun contenitore registrato.</div>`;
+                return;
+            }
+
+            keys.forEach(boxName => {
+                const items = cabinetsMap[boxName];
+                const totalItemsInBox = items.reduce((sum, i) => sum + Number(i.quantita), 0);
+                
+                const card = document.createElement('div');
+                card.className = "bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-2.5";
+                
+                let itemsHtml = '';
+                items.forEach(item => {
+                    itemsHtml += `
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+                            <div>
+                                <span class="font-bold text-slate-900 dark:text-white">${escapeHTML(item.name)}</span>
+                                <div class="text-[11px] text-slate-500 dark:text-slate-400">Valore: <span class="font-semibold">${escapeHTML(item.valore)}</span> | ${escapeHTML(item.cassetto || '-')} / ${escapeHTML(item.divisore || '-')}</div>
+                            </div>
+                            <span class="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold">${item.quantita} pz</span>
+                        </div>
+                    `;
+                });
+
+                card.innerHTML = `
+                    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
+                        <div class="flex items-center gap-2">
+                            <i class="fa-solid fa-box text-indigo-600"></i>
+                            <h3 class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">${escapeHTML(boxName)}</h3>
+                        </div>
+                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">${items.length} art. (${totalItemsInBox} pz)</span>
+                    </div>
+                    <div class="flex flex-col gap-2 max-h-56 overflow-y-auto pr-0.5">
+                        ${itemsHtml}
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        function renderStatsTab() {
+            const container = document.getElementById('stats-by-sigla');
+            container.innerHTML = '';
+
+            const siglaMap = {};
+            inventory.forEach(item => {
+                const s = item.sigla || 'MISC';
+                if (!siglaMap[s]) siglaMap[s] = { count: 0, pieces: 0, value: 0 };
+                siglaMap[s].count += 1;
+                siglaMap[s].pieces += Number(item.quantita);
+                siglaMap[s].value += Number(item.quantita) * Number(item.prezzo);
+            });
+
+            const keys = Object.keys(siglaMap);
+            if (keys.length === 0) {
+                container.innerHTML = `<span class="text-xs text-slate-400">Nessun dato disponibile.</span>`;
+                return;
+            }
+
+            keys.forEach(sigla => {
+                const data = siglaMap[sigla];
+                const row = document.createElement('div');
+                row.className = "flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs";
+                row.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold">${sigla}</span>
+                        <span class="text-slate-600 dark:text-slate-300">${data.count} tipologie (${data.pieces} pezzi)</span>
+                    </div>
+                    <span class="font-bold text-slate-900 dark:text-white">&euro; ${data.value.toFixed(2)}</span>
+                `;
+                container.appendChild(row);
+            });
+        }
+
+        function openModal(editId = null) {
+            const modal = document.getElementById('component-modal');
+            const title = document.getElementById('modal-title');
+            const form = document.getElementById('component-form');
+            form.reset();
+            document.getElementById('comp-id').value = '';
+
+            if (editId) {
+                title.innerHTML = `<i class="fa-solid fa-pen-to-square text-indigo-600"></i> Modifica Componente`;
+                const item = inventory.find(i => i.id === editId);
+                if (item) {
+                    document.getElementById('comp-id').value = item.id;
+                    document.getElementById('comp-name').value = item.name;
+                    document.getElementById('comp-sigla').value = item.sigla;
+                    document.getElementById('comp-tipo').value = item.tipo;
+                    document.getElementById('comp-valore').value = item.valore;
+                    document.getElementById('comp-prezzo').value = item.prezzo;
+                    document.getElementById('comp-quantita').value = item.quantita;
+                    document.getElementById('pos-contenitore').value = item.contenitore;
+                    document.getElementById('pos-cassetto').value = item.cassetto || '';
+                    document.getElementById('pos-divisore').value = item.divisore || '';
+                }
+            } else {
+                title.innerHTML = `<i class="fa-solid fa-circle-plus text-indigo-600"></i> Nuovo Componente`;
+            }
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('component-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        function saveComponent(event) {
+            event.preventDefault();
+            const id = document.getElementById('comp-id').value;
+            const newItem = {
+                id: id ? id : 'comp-' + Date.now(),
+                name: document.getElementById('comp-name').value.trim(),
+                sigla: document.getElementById('comp-sigla').value,
+                tipo: document.getElementById('comp-tipo').value.trim(),
+                valore: document.getElementById('comp-valore').value.trim(),
+                prezzo: parseFloat(document.getElementById('comp-prezzo').value) || 0,
+                quantita: parseInt(document.getElementById('comp-quantita').value) || 0,
+                contenitore: document.getElementById('pos-contenitore').value.trim(),
+                cassetto: document.getElementById('pos-cassetto').value.trim(),
+                divisore: document.getElementById('pos-divisore').value.trim()
+            };
+
+            if (id) {
+                const index = inventory.findIndex(i => i.id === id);
+                if (index !== -1) {
+                    inventory[index] = newItem;
+                    showToast("Componente aggiornato", "success");
+                }
+            } else {
+                inventory.unshift(newItem);
+                showToast("Componente aggiunto", "success");
+            }
+
+            saveData();
+            closeModal();
+            filterInventory();
+        }
+
+        function editComponent(id) {
+            openModal(id);
+        }
+
+        function deleteComponent(id) {
+            inventory = inventory.filter(i => i.id !== id);
+            saveData();
+            filterInventory();
+            showToast("Componente eliminato", "error");
+        }
+
+        function quickUpdateQty(id, change) {
+            const item = inventory.find(i => i.id === id);
+            if (item) {
+                item.quantita = Math.max(0, item.quantita + change);
+                saveData();
+                filterInventory();
+            }
+        }
+
+        function exportJSON() {
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inventory, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `bom_trace_magazzino_${new Date().toISOString().slice(0,10)}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+            showToast("Backup JSON esportato", "success");
+        }
+
+        function importJSON(event) {
+            const fileReader = new FileReader();
+            if (event.target.files[0]) {
+                fileReader.readAsText(event.target.files[0], "UTF-8");
+                fileReader.onload = function(e) {
+                    try {
+                        const imported = JSON.parse(e.target.result);
+                        if (Array.isArray(imported)) {
+                            inventory = imported;
+                            saveData();
+                            filterInventory();
+                            showToast("Magazzino ripristinato con successo", "success");
+                        }
+                    } catch(err) {
+                        showToast("File JSON non valido", "error");
+                    }
+                }
+            }
+        }
+
+        function exportCSV() {
+            let csvContent = "data:text/csv;charset=utf-8,ID,Componente,Sigla,Tipo,Valore,PrezzoUnitario,Quantita,Contenitore,Cassetto,Divisore\r\n";
+            inventory.forEach(item => {
+                const row = [
+                    item.id,
+                    `"${item.name.replace(/"/g, '""')}"`,
+                    item.sigla,
+                    `"${item.tipo.replace(/"/g, '""')}"`,
+                    `"${item.valore.replace(/"/g, '""')}"`,
+                    item.prezzo,
+                    item.quantita,
+                    `"${item.contenitore.replace(/"/g, '""')}"`,
+                    `"${(item.cassetto || '').replace(/"/g, '""')}"`,
+                    `"${(item.divisore || '').replace(/"/g, '""')}"`
+                ];
+                csvContent += row.join(",") + "\r\n";
+            });
+
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `bom_trace_export_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            showToast("Esportazione CSV completata", "success");
+        }
+
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast-notification');
+            const msg = document.getElementById('toast-message');
+            const icon = document.getElementById('toast-icon');
+
+            msg.innerText = message;
+            if (type === 'success') {
+                icon.className = "fa-solid fa-circle-check text-emerald-400";
+            } else {
+                icon.className = "fa-solid fa-circle-exclamation text-rose-400";
+            }
+
+            toast.classList.remove('translate-y-24', 'opacity-0');
+            toast.classList.add('translate-y-0', 'opacity-100');
+
+            setTimeout(() => {
+                toast.classList.remove('translate-y-0', 'opacity-100');
+                toast.classList.add('translate-y-24', 'opacity-0');
+            }, 3000);
+        }
+
+        function escapeHTML(str) {
+            if (!str) return '';
+            return str.replace(/[&<>'"]/g, 
+                tag => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[tag] || tag)
+            );
+        }
+    </script>
+</body>
+</html>
