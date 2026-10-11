@@ -3,1341 +3,287 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>BOM-Trace Pro Mobile - Gestione Magazzino Elettronico</title>
+    <title>BOM-Trace Pro Mobile - Generatore Foglio Etichette Stampabili</title>
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- FontAwesome Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- QRCode.js for generating QR code labels -->
+    <!-- QRCode.js -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
-    <!-- Html5-qrcode for scanning QR codes via camera -->
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
             theme: {
                 extend: {
-                    fontFamily: {
-                        sans: ['Inter', 'sans-serif'],
-                    }
+                    fontFamily: { sans: ['Inter', 'sans-serif'] }
                 }
             }
         }
     </script>
     <style>
-        html {
-            -webkit-tap-highlight-color: transparent;
-        }
-        body {
-            overscroll-behavior-y: none;
-        }
-        .hide-scrollbar::-webkit-scrollbar {
-            display: none;
-        }
-        .hide-scrollbar {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
-        }
         @media print {
-            body * {
-                visibility: hidden;
+            body {
+                background: white !important;
+                color: black !important;
             }
-            #printable-label-area, #printable-label-area * {
-                visibility: visible;
+            .no-print {
+                display: none !important;
             }
-            #printable-label-area {
+            .print-sheet {
+                box-shadow: none !important;
+                border: none !important;
+                margin: 0 !important;
+                padding: 0 !important;
+                width: 100% !important;
+            }
+            /* Quando si stampa una singola etichetta */
+            body.print-single .label-card {
+                display: none !important;
+            }
+            body.print-single .label-card.single-target {
+                display: flex !important;
                 position: absolute;
                 left: 0;
                 top: 0;
-                width: 100%;
+                margin: 0;
+                border: none !important;
+            }
+            @page {
+                size: A4;
+                margin: 10mm;
             }
         }
     </style>
 </head>
-<body class="h-full bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
+<body class="h-full bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans">
 
-    <header class="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs">
-        <div class="max-w-7xl mx-auto px-4 h-14 sm:h-16 flex items-center justify-between">
+    <header class="no-print bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 sticky top-0 z-40 shadow-xs">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex items-center justify-between">
             <div class="flex items-center space-x-2.5">
-                <div class="bg-indigo-600 text-white w-9 h-9 sm:w-10 sm:h-10 rounded-xl shadow-md shadow-indigo-500/20 flex items-center justify-center">
-                    <i class="fa-solid fa-microchip text-base sm:text-lg"></i>
+                <div class="bg-indigo-600 text-white w-10 h-10 rounded-xl shadow-md flex items-center justify-center">
+                    <i class="fa-solid fa-print text-lg"></i>
                 </div>
                 <div>
-                    <h1 class="font-bold text-sm sm:text-base leading-tight text-slate-900 dark:text-white flex items-center gap-1.5">
-                        BOM-Trace <span class="text-[10px] px-1.5 py-0.5 rounded-md bg-indigo-100 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-semibold">Pro Mobile</span>
-                    </h1>
-                    <p class="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block">Gestione ricambi & localizzazione gerarchica</p>
+                    <h1 class="font-bold text-base text-slate-900 dark:text-white">BOM-Trace Print Studio</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">Generatore Fogli Etichette QR Scalabili</p>
                 </div>
             </div>
-            
-            <!-- Desktop Action Buttons -->
-            <div class="hidden md:flex items-center space-x-3">
-                <button onclick="openScannerModal()" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm transition-all active:scale-95">
-                    <i class="fa-solid fa-qrcode"></i> Bippa QR Code
-                </button>
-                <a href="etiketten_print.html" target="_blank" class="inline-flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/60 hover:bg-indigo-100 text-indigo-700 dark:text-indigo-300 text-xs font-semibold px-3.5 py-2 rounded-xl transition-all border border-indigo-200 dark:border-indigo-800">
-                    <i class="fa-solid fa-print"></i> Stampa Foglio QR
-                </a>
-                <button onclick="openModal()" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm transition-all active:scale-95">
-                    <i class="fa-solid fa-plus"></i> Nuovo Componente
-                </button>
-                <div class="h-5 w-px bg-slate-200 dark:bg-slate-700"></div>
-                <button onclick="toggleDarkMode()" title="Cambia Tema" class="p-2 rounded-xl text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                    <i class="fa-solid fa-moon dark:hidden text-base"></i>
-                    <i class="fa-solid fa-sun hidden dark:inline text-base text-amber-400"></i>
-                </button>
-            </div>
-
-            <!-- Mobile Quick Actions -->
-            <div class="flex md:hidden items-center space-x-1.5">
-                <button onclick="openScannerModal()" class="w-9 h-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-md">
-                    <i class="fa-solid fa-qrcode text-sm"></i>
-                </button>
-                <button onclick="toggleDarkMode()" class="p-2 rounded-xl text-slate-600 dark:text-slate-300">
-                    <i class="fa-solid fa-moon dark:hidden text-base"></i>
-                    <i class="fa-solid fa-sun hidden dark:inline text-base text-amber-400"></i>
-                </button>
-                <button onclick="openModal()" class="w-9 h-9 bg-slate-800 dark:bg-slate-700 text-white rounded-xl flex items-center justify-center shadow-md">
-                    <i class="fa-solid fa-plus text-sm"></i>
+            <div class="flex items-center gap-2">
+                <button onclick="window.print()" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs shadow-sm flex items-center gap-2 transition-all">
+                    <i class="fa-solid fa-print"></i> Stampa Foglio
                 </button>
             </div>
         </div>
     </header>
 
-    <main class="flex-1 max-w-7xl w-full mx-auto px-3 sm:px-6 lg:px-8 py-3 sm:py-6 flex flex-col gap-4 pb-24 md:pb-6 overflow-y-auto">
-
-        <!-- TAB 1: INVENTORY -->
-        <div id="view-inventory" class="flex flex-col gap-4">
-            
-            <!-- Quick Stats Bar -->
-            <div class="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
-                <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-                    <div class="p-2.5 bg-blue-50 dark:bg-blue-950/50 text-blue-600 dark:text-blue-400 rounded-xl">
-                        <i class="fa-solid fa-microchip text-base"></i>
-                    </div>
-                    <div>
-                        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Articoli</p>
-                        <h3 id="stat-total-types" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">0</h3>
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-                    <div class="p-2.5 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-600 dark:text-emerald-400 rounded-xl">
-                        <i class="fa-solid fa-cubes-stacked text-base"></i>
-                    </div>
-                    <div>
-                        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Pezzi Totali</p>
-                        <h3 id="stat-total-pieces" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">0</h3>
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-                    <div class="p-2.5 bg-amber-50 dark:bg-amber-950/50 text-amber-600 dark:text-amber-400 rounded-xl">
-                        <i class="fa-solid fa-euro-sign text-base"></i>
-                    </div>
-                    <div>
-                        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Valore Stock</p>
-                        <h3 id="stat-total-value" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">€ 0.00</h3>
-                    </div>
-                </div>
-                <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex items-center gap-3">
-                    <div class="p-2.5 bg-rose-50 dark:bg-rose-950/50 text-rose-600 dark:text-rose-400 rounded-xl">
-                        <i class="fa-solid fa-triangle-exclamation text-base"></i>
-                    </div>
-                    <div>
-                        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400">Scorte Basse</p>
-                        <h3 id="stat-low-stock" class="text-base sm:text-lg font-bold text-slate-900 dark:text-white">0</h3>
-                    </div>
-                </div>
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 flex flex-col gap-6">
+        
+        <!-- Controls Toolbar -->
+        <div class="no-print bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs grid grid-cols-1 sm:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Filtra per Contenitore</label>
+                <select id="filter-container-select" onchange="renderSheet()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white">
+                    <option value="">Tutti i Contenitori</option>
+                </select>
             </div>
-
-            <!-- Search & Filters Toolbar -->
-            <div class="bg-white dark:bg-slate-900 p-3 sm:p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-2.5">
-                <div class="relative w-full">
-                    <i class="fa-solid fa-magnifying-glass absolute left-3.5 top-3 text-slate-400 text-sm"></i>
-                    <input type="text" id="search-input" oninput="filterInventory()" placeholder="Cerca componente, valore o posizione..." 
-                        class="w-full pl-10 pr-4 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 text-slate-900 dark:text-white">
-                </div>
-                <div class="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2">
-                    <select id="filter-sigla" onchange="filterInventory()" class="w-full sm:w-auto px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">Tutte le Sigle</option>
-                        <option value="R">R (Resistore)</option>
-                        <option value="C">C (Condensatore)</option>
-                        <option value="IC">IC (Integrato)</option>
-                        <option value="Q">Q (Transistor)</option>
-                        <option value="D">D (Diodo/LED)</option>
-                        <option value="L">L (Induttore)</option>
-                        <option value="CON">CON (Connettore)</option>
-                        <option value="MISC">MISC (Altro)</option>
-                    </select>
-                    <select id="filter-tipo" onchange="filterInventory()" class="w-full sm:w-auto px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-700 dark:text-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500">
-                        <option value="">Tutti i Tipi</option>
-                        <option value="Resistenze">Resistenze</option>
-                        <option value="Condensatori">Condensatori</option>
-                        <option value="Semisonduttori / IC">Semisonduttori / IC</option>
-                        <option value="Transistor / FET">Transistor / FET</option>
-                        <option value="Diodi / LED">Diodi / LED</option>
-                        <option value="Connettori">Connettori</option>
-                        <option value="Elettromeccanica">Elettromeccanica</option>
-                    </select>
-                    <div class="col-span-2 flex items-center justify-end gap-1.5 sm:ml-auto pt-1 sm:pt-0">
-                        <button onclick="exportJSON()" title="Esporta Backup JSON" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs flex items-center gap-1.5"><i class="fa-solid fa-download"></i> <span class="hidden sm:inline">Backup</span></button>
-                        <label title="Ripristina JSON" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs flex items-center gap-1.5 cursor-pointer">
-                            <i class="fa-solid fa-upload"></i> <span class="hidden sm:inline">Ripristina</span>
-                            <input type="file" id="import-file" accept=".json" onchange="importJSON(event)" class="hidden">
-                        </label>
-                        <button onclick="exportCSV()" title="Esporta CSV" class="px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs flex items-center gap-1.5"><i class="fa-solid fa-file-csv"></i> <span class="hidden sm:inline">CSV</span></button>
-                    </div>
-                </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Dimensione Etichetta</label>
+                <select id="label-size-select" onchange="updateLabelDimensions()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white">
+                    <option value="compact">Piccola / Cassettiera Min (40x30 mm)</option>
+                    <option value="standard" selected>Standard (60x40 mm)</option>
+                    <option value="large">Grande / Scatola (80x50 mm)</option>
+                    <option value="custom">Personalizzata</option>
+                </select>
             </div>
-
-            <div class="flex flex-col gap-3">
-                <!-- Mobile Cards Container -->
-                <div id="mobile-cards-container" class="grid grid-cols-1 gap-2.5 md:hidden">
-                    <!-- Populated dynamically -->
-                </div>
-
-                <!-- Desktop Table Container -->
-                <div class="hidden md:block bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs overflow-hidden">
-                    <div class="overflow-x-auto">
-                        <table class="w-full text-left border-collapse">
-                            <thead>
-                                <tr class="bg-slate-50 dark:bg-slate-950/50 text-slate-500 dark:text-slate-400 text-xs uppercase tracking-wider border-b border-slate-200 dark:border-slate-800">
-                                    <th class="py-3 px-4 font-semibold">Componente / Descrizione</th>
-                                    <th class="py-3 px-4 font-semibold">Sigla / Tipo</th>
-                                    <th class="py-3 px-4 font-semibold">Valore</th>
-                                    <th class="py-3 px-4 font-semibold">Posizione</th>
-                                    <th class="py-3 px-4 font-semibold text-center">Quantità</th>
-                                    <th class="py-3 px-4 font-semibold text-right">Prezzo Unit. / Tot.</th>
-                                    <th class="py-3 px-4 font-semibold text-center">Azioni</th>
-                                </tr>
-                            </thead>
-                            <tbody id="inventory-table-body" class="divide-y divide-slate-100 dark:divide-slate-800 text-xs sm:text-sm">
-                                <!-- Populated via JS -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-
-                <!-- Empty State -->
-                <div id="empty-state" class="hidden flex-col items-center justify-center p-12 text-center bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800">
-                    <div class="w-14 h-14 bg-slate-100 dark:bg-slate-800 text-slate-400 rounded-full flex items-center justify-center text-xl mb-3">
-                        <i class="fa-solid fa-box-open"></i>
-                    </div>
-                    <h3 class="font-semibold text-slate-700 dark:text-slate-200 text-sm">Nessun componente trovato</h3>
-                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Aggiungi un nuovo ricambio usando il pulsante in basso.</p>
-                </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Larghezza (mm)</label>
+                <input type="number" id="custom-width" value="60" min="30" max="150" oninput="renderSheet()" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white">
+            </div>
+            <div>
+                <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Altezza (mm)</label>
+                <input type="number" id="custom-height" value="40" min="20" max="100" oninput="renderSheet()" class="w-full px-3.5 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white">
             </div>
         </div>
 
-        <!-- TAB 2: CABINETS & LOCATIONS EXPLORER -->
-        <div id="view-cabinets" class="hidden flex-col gap-4">
-            <div class="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-4">
-                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-                    <div>
-                        <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                            <i class="fa-solid fa-cubes text-indigo-600"></i> Mappa Contenitori & Generatore Strutture
-                        </h2>
-                        <p class="text-xs text-slate-500 dark:text-slate-400">Crea nuove strutture (Cassettiere, Scatole o Organizer) e stampa i QR code</p>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <a href="etiketten_print.html" target="_blank" class="inline-flex items-center gap-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 text-slate-700 dark:text-slate-200 text-xs font-semibold px-3.5 py-2.5 rounded-xl transition-all">
-                            <i class="fa-solid fa-print"></i> Foglio Stampa A4
-                        </a>
-                        <button onclick="openContainerModal()" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-4 py-2.5 rounded-xl shadow-sm transition-all active:scale-95 shrink-0">
-                            <i class="fa-solid fa-plus"></i> Nuovo Contenitore
-                        </button>
-                    </div>
-                </div>
-                <div id="cabinets-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-1">
-                    <!-- Populated via JS -->
-                </div>
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-4 print-sheet">
+            <div class="no-print flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
+                <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-table-cells text-indigo-600"></i> Anteprima Foglio Stampa A4
+                </h3>
+                <span id="label-count-badge" class="text-xs text-slate-500 font-semibold">0 etichette caricate</span>
             </div>
-        </div>
 
-        <!-- TAB 3: STATISTICS & LAB SUMMARY -->
-        <div id="view-stats" class="hidden flex-col gap-4">
-            <div class="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-4">
-                <div>
-                    <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <i class="fa-solid fa-chart-pie text-indigo-600"></i> Statistiche e Analisi Laboratorio
-                    </h2>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Riepilogo categorie, valore economico e stock critici</p>
-                </div>
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2">
-                    <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col gap-2">
-                        <span class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Valore per Sigla Componente</span>
-                        <div id="stats-by-sigla" class="flex flex-col gap-2 mt-1">
-                            <!-- Populated via JS -->
-                        </div>
-                    </div>
-                    <div class="p-4 rounded-2xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 flex flex-col gap-2">
-                        <span class="text-xs font-bold text-slate-600 dark:text-slate-400 uppercase tracking-wider">Gestione Dati & Manutenzione</span>
-                        <div class="flex flex-col gap-2.5 mt-1">
-                            <button onclick="resetDataToDemo()" class="w-full py-2.5 px-4 bg-slate-200 dark:bg-slate-800 hover:bg-slate-300 dark:hover:bg-slate-700 text-slate-800 dark:text-slate-200 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors">
-                                <i class="fa-solid fa-rotate-right"></i> Ripristina Dati di Esempio
-                            </button>
-                            <button onclick="clearAllData()" class="w-full py-2.5 px-4 bg-rose-50 dark:bg-rose-950/40 hover:bg-rose-100 text-rose-600 dark:text-rose-400 rounded-xl text-xs font-semibold flex items-center justify-center gap-2 transition-colors">
-                                <i class="fa-solid fa-trash-can"></i> Svuota Intero Magazzino
-                            </button>
-                        </div>
-                    </div>
-                </div>
+            <!-- Labels Grid Container -->
+            <div id="labels-grid" class="flex flex-wrap gap-4 justify-start items-start">
+                <!-- Dynamically populated -->
             </div>
         </div>
 
     </main>
 
-    <nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-800 z-30 px-6 py-2 flex items-center justify-around shadow-lg">
-        <button onclick="switchTab('inventory')" id="nav-btn-inventory" class="flex flex-col items-center gap-1 text-indigo-600 dark:text-indigo-400 transition-colors">
-            <i class="fa-solid fa-boxes-stacked text-lg"></i>
-            <span class="text-[10px] font-semibold">Magazzino</span>
-        </button>
-        <button onclick="switchTab('cabinets')" id="nav-btn-cabinets" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-            <i class="fa-solid fa-cubes text-lg"></i>
-            <span class="text-[10px] font-semibold">Contenitori</span>
-        </button>
-        <button onclick="openScannerModal()" class="flex flex-col items-center gap-1 text-white -mt-5">
-            <div class="w-12 h-12 bg-indigo-600 hover:bg-indigo-700 rounded-full shadow-lg shadow-indigo-500/40 flex items-center justify-center text-xl transition-transform active:scale-95">
-                <i class="fa-solid fa-qrcode"></i>
-            </div>
-            <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400">Bippa QR</span>
-        </button>
-        <button onclick="openModal()" class="flex flex-col items-center gap-1 text-white -mt-5">
-            <div class="w-12 h-12 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 rounded-full shadow-lg flex items-center justify-center text-xl transition-transform active:scale-95">
-                <i class="fa-solid fa-plus"></i>
-            </div>
-            <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400">Nuovo</span>
-        </button>
-        <button onclick="switchTab('stats')" id="nav-btn-stats" class="flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors">
-            <i class="fa-solid fa-chart-pie text-lg"></i>
-            <span class="text-[10px] font-semibold">Statistiche</span>
-        </button>
-    </nav>
-
-    <!-- QR CODE SCANNER MODAL -->
-    <div id="scanner-modal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs hidden items-center justify-center p-3 sm:p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all flex flex-col">
-            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-                <h3 class="font-bold text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
-                    <i class="fa-solid fa-qrcode text-indigo-600"></i> Scanner QR Code Cassetto
-                </h3>
-                <button onclick="closeScannerModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-            <div class="p-4 sm:p-6 flex flex-col gap-4 items-center">
-                <p class="text-xs text-slate-500 dark:text-slate-400 text-center">Inquadra il QR code stampato sull'etichetta del cassetto per caricare rapidamente la posizione nel nuovo componente.</p>
-                <div id="reader" class="w-full rounded-2xl overflow-hidden bg-slate-900 min-h-[240px]"></div>
-                <div id="scan-result-box" class="hidden w-full p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
-                    <div>
-                        <span class="font-bold block">Posizione Rilevata:</span>
-                        <span id="scan-result-text" class="font-mono"></span>
-                    </div>
-                    <button onclick="useScannedLocation()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs shadow-sm">Usa Posizione</button>
-                </div>
-                <div class="w-full flex items-center justify-end gap-2 pt-2">
-                    <button type="button" onclick="closeScannerModal()" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                        Chiudi
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- QR CODE LABEL GENERATOR & PRINT MODAL -->
-    <div id="label-modal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs hidden items-center justify-center p-3 sm:p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all flex flex-col">
-            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-                <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
-                    <i class="fa-solid fa-tag text-indigo-600"></i> Etichetta Cassetto QR
-                </h3>
-                <button onclick="closeLabelModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-            <div class="p-6 flex flex-col items-center gap-4">
-                <!-- Printable Label Card -->
-                <div id="printable-label-area" class="w-full bg-white text-slate-900 p-4 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center gap-3 shadow-xs">
-                    <div class="flex items-center gap-2">
-                        <i class="fa-solid fa-microchip text-indigo-600"></i>
-                        <span class="font-bold text-xs uppercase tracking-wider text-slate-700">BOM-Trace Label</span>
-                    </div>
-                    <div id="qrcode-container" class="bg-white p-2 rounded-xl shadow-xs border border-slate-100 flex items-center justify-center"></div>
-                    <div class="text-center">
-                        <div id="label-box-name" class="font-bold text-sm text-slate-900"></div>
-                        <div id="label-drawer-name" class="text-xs text-slate-600 font-semibold"></div>
-                    </div>
-                </div>
-                
-                <div class="w-full flex items-center justify-center gap-2.5 pt-2">
-                    <button type="button" onclick="window.print()" class="w-full py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95">
-                        <i class="fa-solid fa-print"></i> Stampa Etichetta
-                    </button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- NEW CONTAINER GENERATOR MODAL -->
-    <div id="container-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-3 sm:p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all flex flex-col">
-            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-                <h3 class="font-bold text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
-                    <i class="fa-solid fa-cubes text-indigo-600"></i> Generatore Contenitore
-                </h3>
-                <button onclick="closeContainerModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-            <form id="container-form" onsubmit="saveNewContainer(event)" class="p-4 sm:p-6 flex flex-col gap-4">
-                <div>
-                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Nome Contenitore / Scatola</label>
-                    <input type="text" id="gen-box-name" required placeholder="es. Cassettiera Lab Elettronica"
-                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tipologia Struttura</label>
-                    <select id="gen-box-type" onchange="toggleContainerFields()" class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
-                        <option value="cassettiera">Cassettiera a Cassetti (Griglia)</option>
-                        <option value="scatola">Scatola Semplice (Unica Posizione)</option>
-                        <option value="organizer">Contenitore Richiudibile con Scomparti</option>
-                    </select>
-                </div>
-
-                <!-- Fields for Cassettiera -->
-                <div id="fields-cassettiera" class="grid grid-cols-2 gap-3 p-3.5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50">
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Numero File / Colonne</label>
-                        <input type="number" min="1" max="10" id="gen-rows" value="3" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white">
-                    </div>
-                    <div>
-                        <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Cassetti per Riga</label>
-                        <input type="number" min="1" max="10" id="gen-cols" value="4" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white">
-                    </div>
-                </div>
-
-                <!-- Fields for Organizer Scomparti -->
-                <div id="fields-organizer" class="hidden p-3.5 rounded-2xl bg-indigo-50/50 dark:bg-indigo-950/20 border border-indigo-100 dark:border-indigo-900/50">
-                    <label class="block text-[11px] font-semibold text-slate-700 dark:text-slate-300 mb-1">Numero Scomparti Interni</label>
-                    <input type="number" min="1" max="30" id="gen-compartments" value="6" class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs text-slate-900 dark:text-white">
-                </div>
-
-                <div class="flex items-center justify-end gap-2.5 pt-2">
-                    <button type="button" onclick="closeContainerModal()" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                        Annulla
-                    </button>
-                    <button type="submit" class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all active:scale-95">
-                        Genera Contenitore
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- COMPONENT EDIT/ADD MODAL -->
-    <div id="component-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-3 sm:p-4">
-        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
-            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
-                <h3 id="modal-title" class="font-bold text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
-                    <i class="fa-solid fa-circle-plus text-indigo-600"></i> Nuovo Componente
-                </h3>
-                <button onclick="closeModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
-                    <i class="fa-solid fa-xmark text-sm"></i>
-                </button>
-            </div>
-            <form id="component-form" onsubmit="saveComponent(event)" class="p-4 sm:p-6 flex flex-col gap-3.5 overflow-y-auto">
-                <input type="hidden" id="comp-id">
-                
-                <div>
-                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Componente (Descrizione)</label>
-                    <input type="text" id="comp-name" required placeholder="es. Resistenza strato metallico 1/4W"
-                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Sigla Componente</label>
-                        <select id="comp-sigla" required class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
-                            <option value="R">R (Resistore)</option>
-                            <option value="C">C (Condensatore)</option>
-                            <option value="IC">IC (Integrato / Chip)</option>
-                            <option value="Q">Q (Transistor / FET)</option>
-                            <option value="D">D (Diodo / LED)</option>
-                            <option value="L">L (Induttore)</option>
-                            <option value="CON">CON (Connettore)</option>
-                            <option value="MISC">MISC (Altro)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Tipo Componente</label>
-                        <input type="text" id="comp-tipo" required list="tipi-list" placeholder="es. Resistenze"
-                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
-                        <datalist id="tipi-list">
-                            <option value="Resistenze">
-                            <option value="Condensatori">
-                            <option value="Semisonduttori / IC">
-                            <option value="Transistor / FET">
-                            <option value="Diodi / LED">
-                            <option value="Connettori">
-                            <option value="Elettromeccanica">
-                        </datalist>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Valore Elettrico / Sigla</label>
-                        <input type="text" id="comp-valore" required placeholder="es. 10kOhm o ESP32"
-                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
-                    </div>
-                    <div>
-                        <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Prezzo Unitario (EUR)</label>
-                        <input type="number" step="0.001" min="0" id="comp-prezzo" required placeholder="0.05"
-                            class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
-                    </div>
-                </div>
-
-                <div>
-                    <label class="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Quantità in Stock</label>
-                    <input type="number" min="0" id="comp-quantita" required placeholder="50"
-                        class="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs sm:text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
-                </div>
-
-                <div class="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 flex flex-col gap-2.5">
-                    <div class="flex items-center justify-between">
-                        <span class="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
-                            <i class="fa-solid fa-location-dot"></i> Posizione Fisica Gerarchica
-                        </span>
-                        <button type="button" onclick="openScannerModalFromModal()" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-semibold flex items-center gap-1 shadow-xs">
-                            <i class="fa-solid fa-qrcode"></i> Bippa QR
-                        </button>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                        <div>
-                            <label class="block text-[10px] font-medium text-slate-600 dark:text-slate-400 mb-0.5">Contenitore / Box *</label>
-                            <input type="text" id="pos-contenitore" required placeholder="es. Box 1"
-                                class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-medium text-slate-600 dark:text-slate-400 mb-0.5">Cassetto (Opz.)</label>
-                            <input type="text" id="pos-cassetto" placeholder="es. Cassetto 3"
-                                class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
-                        </div>
-                        <div>
-                            <label class="block text-[10px] font-medium text-slate-600 dark:text-slate-400 mb-0.5">Divisore / Slot (Opz.)</label>
-                            <input type="text" id="pos-divisore" placeholder="es. Slot B"
-                                class="w-full px-3 py-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs focus:ring-2 focus:ring-indigo-500 focus:outline-none text-slate-900 dark:text-white">
-                        </div>
-                    </div>
-                </div>
-
-                <div class="flex items-center justify-end gap-2.5 pt-2">
-                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
-                        Annulla
-                    </button>
-                    <button type="submit" class="px-5 py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm transition-all active:scale-95">
-                        Salva Componente
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
-
-    <!-- Notification Toast -->
-    <div id="toast-notification" class="fixed bottom-20 md:bottom-6 right-4 z-50 transform translate-y-24 opacity-0 transition-all duration-300 pointer-events-none">
-        <div id="toast-content" class="flex items-center gap-3 px-4 py-3 rounded-2xl shadow-xl bg-slate-900 text-white border border-slate-700 text-xs sm:text-sm">
-            <i id="toast-icon" class="fa-solid fa-circle-check text-emerald-400"></i>
-            <span id="toast-message">Operazione completata con successo</span>
-        </div>
-    </div>
-
     <script>
-        const defaultComponents = [
-            {
-                id: "comp-1",
-                name: "Resistenza strato metallico 1/4W 1%",
-                sigla: "R",
-                tipo: "Resistenze",
-                valore: "10kOhm",
-                prezzo: 0.015,
-                quantita: 120,
-                contenitore: "Box Cassettiera A",
-                cassetto: "Cassetto 01",
-                divisore: "Slot A2"
-            },
-            {
-                id: "comp-2",
-                name: "Condensatore Ceramico Multilayers",
-                sigla: "C",
-                tipo: "Condensatori",
-                valore: "100nF",
-                prezzo: 0.04,
-                quantita: 3,
-                contenitore: "Box Cassettiera A",
-                cassetto: "Cassetto 02",
-                divisore: "Slot B1"
-            },
-            {
-                id: "comp-3",
-                name: "Microcontrollore ESP32 WiFi+BT",
-                sigla: "IC",
-                tipo: "Semisonduttori / IC",
-                valore: "ESP32-WROOM",
-                prezzo: 4.50,
-                quantita: 8,
-                contenitore: "Valigetta Componenti",
-                cassetto: "Scomparto Centrale",
-                divisore: "Antistatico 1"
-            },
-            {
-                id: "comp-4",
-                name: "Transistor NPN Switching",
-                sigla: "Q",
-                tipo: "Transistor / FET",
-                valore: "2N2222A",
-                prezzo: 0.08,
-                quantita: 35,
-                contenitore: "Box Cassettiera B",
-                cassetto: "Cassetto 04",
-                divisore: "Divisore Sinistro"
-            },
-            {
-                id: "comp-5",
-                name: "LED Alta Luminosità 5mm Rosso",
-                sigla: "D",
-                tipo: "Diodi / LED",
-                valore: "LED 5mm Rosso",
-                prezzo: 0.03,
-                quantita: 2,
-                contenitore: "Box Cassettiera B",
-                cassetto: "Cassetto 06",
-                divisore: "Slot C"
-            }
-        ];
-
-        let inventory = [];
-        let html5QrCode = null;
-        let lastScannedLocation = null;
-        let scannerActiveContext = 'main'; // 'main' or 'component-modal'
+        let allItemsToPrint = [];
 
         window.onload = function() {
-            loadData();
-            initTheme();
-            renderInventory();
-            updateStats();
-            renderCabinets();
-            renderStatsTab();
+            loadItems();
+            populateContainerFilter();
+            checkUrlParams();
+            renderSheet();
         };
 
-        function loadData() {
+        function loadItems() {
             const saved = localStorage.getItem('bom_trace_mobile_inventory');
             if (saved) {
                 try {
-                    inventory = JSON.parse(saved);
+                    const inventory = JSON.parse(saved);
+                    const map = {};
+                    inventory.forEach(item => {
+                        const box = item.contenitore || "Box Principale";
+                        const drawer = item.cassetto || "Cassetto 1";
+                        const key = `${box}___${drawer}`;
+                        map[key] = { box, drawer };
+                    });
+                    allItemsToPrint = Object.values(map);
                 } catch(e) {
-                    inventory = defaultComponents;
+                    allItemsToPrint = [];
                 }
-            } else {
-                inventory = defaultComponents;
-                saveData();
+            }
+
+            if (allItemsToPrint.length === 0) {
+                allItemsToPrint = [
+                    { box: "Box Cassettiera A", drawer: "Cassetto 01" },
+                    { box: "Box Cassettiera A", drawer: "Cassetto 02" },
+                    { box: "Box Cassettiera B", drawer: "Cassetto 01" },
+                    { box: "Valigetta Componenti", drawer: "Scomparto Centrale" }
+                ];
             }
         }
 
-        function saveData() {
-            localStorage.setItem('bom_trace_mobile_inventory', JSON.stringify(inventory));
-            updateStats();
-            renderCabinets();
-            renderStatsTab();
-        }
-
-        function resetDataToDemo() {
-            inventory = defaultComponents;
-            saveData();
-            renderInventory();
-            showToast("Dati di esempio ripristinati", "success");
-        }
-
-        function clearAllData() {
-            inventory = [];
-            saveData();
-            renderInventory();
-            showToast("Magazzino svuotato", "error");
-        }
-
-        function initTheme() {
-            if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
-                document.documentElement.classList.add('dark');
-            } else {
-                document.documentElement.classList.remove('dark');
-            }
-        }
-
-        function toggleDarkMode() {
-            if (document.documentElement.classList.contains('dark')) {
-                document.documentElement.classList.remove('dark');
-                localStorage.setItem('theme', 'light');
-            } else {
-                document.documentElement.classList.add('dark');
-                localStorage.setItem('theme', 'dark');
-            }
-        }
-
-        function switchTab(tabName) {
-            const invView = document.getElementById('view-inventory');
-            const cabView = document.getElementById('view-cabinets');
-            const statsView = document.getElementById('view-stats');
+        function populateContainerFilter() {
+            const select = document.getElementById('filter-container-select');
+            const boxes = [...new Set(allItemsToPrint.map(i => i.box))];
             
-            const btnInv = document.getElementById('nav-btn-inventory');
-            const btnCab = document.getElementById('nav-btn-cabinets');
-            const btnStats = document.getElementById('nav-btn-stats');
-
-            invView.classList.add('hidden');
-            cabView.classList.add('hidden');
-            statsView.classList.add('hidden');
-
-            if (btnInv) btnInv.className = "flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors";
-            if (btnCab) btnCab.className = "flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors";
-            if (btnStats) btnStats.className = "flex flex-col items-center gap-1 text-slate-400 hover:text-slate-600 transition-colors";
-
-            if (tabName === 'inventory') {
-                invView.classList.remove('hidden');
-                if (btnInv) btnInv.className = "flex flex-col items-center gap-1 text-indigo-600 dark:text-indigo-400 transition-colors";
-                renderInventory();
-            } else if (tabName === 'cabinets') {
-                cabView.classList.remove('hidden');
-                if (btnCab) btnCab.className = "flex flex-col items-center gap-1 text-indigo-600 dark:text-indigo-400 transition-colors";
-                renderCabinets();
-            } else if (tabName === 'stats') {
-                statsView.classList.remove('hidden');
-                if (btnStats) btnStats.className = "flex flex-col items-center gap-1 text-indigo-600 dark:text-indigo-400 transition-colors";
-                renderStatsTab();
-            }
-        }
-
-        function renderInventory(filteredList = null) {
-            const list = filteredList || inventory;
-            const mobileCardsContainer = document.getElementById('mobile-cards-container');
-            const tbody = document.getElementById('inventory-table-body');
-            const emptyState = document.getElementById('empty-state');
-            
-            mobileCardsContainer.innerHTML = '';
-            tbody.innerHTML = '';
-
-            if (list.length === 0) {
-                emptyState.classList.remove('hidden');
-                emptyState.classList.add('flex');
-                return;
-            } else {
-                emptyState.classList.remove('flex');
-                emptyState.classList.add('hidden');
-            }
-
-            list.forEach(item => {
-                const isLowStock = item.quantita < 5;
-                const totalValue = (item.quantita * item.prezzo).toFixed(2);
-                const locationLabel = formatLocation(item.contenitore, item.cassetto, item.divisore);
-
-                const card = document.createElement('div');
-                card.className = "bg-white dark:bg-slate-900 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-3";
-                card.innerHTML = `
-                    <div class="flex items-start justify-between gap-2">
-                        <div>
-                            <div class="flex items-center gap-1.5 mb-1">
-                                <span class="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-[11px]">${escapeHTML(item.sigla)}</span>
-                                <span class="text-[11px] text-slate-500 dark:text-slate-400">${escapeHTML(item.tipo)}</span>
-                            </div>
-                            <h4 class="font-bold text-sm text-slate-900 dark:text-white leading-snug">${escapeHTML(item.name)}</h4>
-                        </div>
-                        <div class="text-right shrink-0">
-                            <span class="font-bold text-sm text-slate-900 dark:text-white">&euro; ${totalValue}</span>
-                            <div class="text-[10px] text-slate-400 font-mono">&euro; ${Number(item.prezzo).toFixed(3)}/cad</div>
-                        </div>
-                    </div>
-
-                    <div class="flex items-center justify-between text-xs pt-1 border-t border-slate-100 dark:border-slate-800/80">
-                        <span class="font-mono bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded-lg text-slate-700 dark:text-slate-300 font-semibold">${escapeHTML(item.valore)}</span>
-                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[11px] font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50 truncate max-w-[160px]">
-                            <i class="fa-solid fa-location-dot text-[9px]"></i> ${escapeHTML(locationLabel)}
-                        </span>
-                    </div>
-
-                    <div class="flex items-center justify-between pt-1">
-                        <div class="flex items-center gap-2">
-                            <span class="text-xs text-slate-500">Q.tà:</span>
-                            <div class="inline-flex items-center gap-1 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                                <button onclick="quickUpdateQty('${item.id}', -1)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-xs flex items-center justify-center text-xs active:scale-95"><i class="fa-solid fa-minus"></i></button>
-                                <span class="font-bold w-7 text-center text-xs ${isLowStock ? 'text-rose-600 font-extrabold' : 'text-slate-800 dark:text-slate-200'}">${item.quantita}</span>
-                                <button onclick="quickUpdateQty('${item.id}', 1)" class="w-7 h-7 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 shadow-xs flex items-center justify-center text-xs active:scale-95"><i class="fa-solid fa-plus"></i></button>
-                            </div>
-                            ${isLowStock ? '<span class="text-[10px] text-rose-500 font-semibold">Scorta bassa!</span>' : ''}
-                        </div>
-                        <div class="flex items-center gap-1">
-                            <button onclick="editComponent('${item.id}')" title="Modifica" class="p-2 rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><i class="fa-solid fa-pen text-xs"></i></button>
-                            <button onclick="deleteComponent('${item.id}')" title="Elimina" class="p-2 rounded-xl text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"><i class="fa-solid fa-trash text-xs"></i></button>
-                        </div>
-                    </div>
-                `;
-                mobileCardsContainer.appendChild(card);
-
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors";
-                tr.innerHTML = `
-                    <td class="py-3 px-4">
-                        <div class="font-semibold text-slate-900 dark:text-white">${escapeHTML(item.name)}</div>
-                        <div class="text-[11px] text-slate-400">ID: ${item.id}</div>
-                    </td>
-                    <td class="py-3 px-4">
-                        <div class="flex items-center gap-1.5">
-                            <span class="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold text-xs">${escapeHTML(item.sigla)}</span>
-                            <span class="text-xs text-slate-500 dark:text-slate-400">${escapeHTML(item.tipo)}</span>
-                        </div>
-                    </td>
-                    <td class="py-3 px-4">
-                        <span class="px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-mono text-xs font-semibold">${escapeHTML(item.valore)}</span>
-                    </td>
-                    <td class="py-3 px-4">
-                        <span class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-200/50 dark:border-emerald-800/50">
-                            <i class="fa-solid fa-location-dot text-[10px]"></i> ${escapeHTML(locationLabel)}
-                        </span>
-                    </td>
-                    <td class="py-3 px-4 text-center">
-                        <div class="inline-flex items-center gap-2">
-                            <button onclick="quickUpdateQty('${item.id}', -1)" class="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 flex items-center justify-center text-xs transition-colors"><i class="fa-solid fa-minus"></i></button>
-                            <span class="font-bold w-8 text-center ${isLowStock ? 'text-rose-600 font-extrabold' : 'text-slate-800 dark:text-slate-200'}">${item.quantita}</span>
-                            <button onclick="quickUpdateQty('${item.id}', 1)" class="w-6 h-6 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 flex items-center justify-center text-xs transition-colors"><i class="fa-solid fa-plus"></i></button>
-                        </div>
-                        ${isLowStock ? '<div class="text-[10px] text-rose-500 font-semibold mt-0.5">Scorta bassa!</div>' : ''}
-                    </td>
-                    <td class="py-3 px-4 text-right">
-                        <div class="font-semibold text-slate-900 dark:text-white">&euro; ${totalValue}</div>
-                        <div class="text-[11px] text-slate-400 font-mono">&euro; ${Number(item.prezzo).toFixed(3)}/cad</div>
-                    </td>
-                    <td class="py-3 px-4 text-center">
-                        <div class="flex items-center justify-center gap-1">
-                            <button onclick="editComponent('${item.id}')" title="Modifica" class="p-1.5 rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"><i class="fa-solid fa-pen"></i></button>
-                            <button onclick="deleteComponent('${item.id}')" title="Elimina" class="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition-colors"><i class="fa-solid fa-trash"></i></button>
-                        </div>
-                    </td>
-                `;
-                tbody.appendChild(tr);
+            boxes.forEach(box => {
+                const opt = document.createElement('option');
+                opt.value = box;
+                opt.innerText = box;
+                select.appendChild(opt);
             });
         }
 
-        function formatLocation(box, drawer, divider) {
-            let parts = [box];
-            if (drawer && drawer.trim() !== '') parts.push(drawer);
-            if (divider && divider.trim() !== '') parts.push(divider);
-            return parts.join(' > ');
+        function checkUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            const boxParam = params.get('box');
+            const drawerParam = params.get('drawer');
+
+            if (boxParam) {
+                document.getElementById('filter-container-select').value = boxParam;
+            }
         }
 
-        function filterInventory() {
-            const query = document.getElementById('search-input').value.toLowerCase();
-            const siglaFilter = document.getElementById('filter-sigla').value;
-            const tipoFilter = document.getElementById('filter-tipo').value;
+        function updateLabelDimensions() {
+            const size = document.getElementById('label-size-select').value;
+            const wInput = document.getElementById('custom-width');
+            const hInput = document.getElementById('custom-height');
 
-            const filtered = inventory.filter(item => {
-                const matchQuery = item.name.toLowerCase().includes(query) ||
-                                   item.valore.toLowerCase().includes(query) ||
-                                   item.contenitore.toLowerCase().includes(query) ||
-                                   (item.cassetto && item.cassetto.toLowerCase().includes(query)) ||
-                                   (item.divisore && item.divisore.toLowerCase().includes(query));
-                const matchSigla = siglaFilter === "" || item.sigla === siglaFilter;
-                const matchTipo = tipoFilter === "" || item.tipo === tipoFilter;
-
-                return matchQuery && matchSigla && matchTipo;
-            });
-
-            renderInventory(filtered);
+            if (size === 'compact') {
+                wInput.value = 40;
+                hInput.value = 30;
+            } else if (size === 'standard') {
+                wInput.value = 60;
+                hInput.value = 40;
+            } else if (size === 'large') {
+                wInput.value = 80;
+                hInput.value = 50;
+            }
+            renderSheet();
         }
 
-        function updateStats() {
-            const totalTypes = inventory.length;
-            const totalPieces = inventory.reduce((sum, item) => sum + Number(item.quantita), 0);
-            const totalValue = inventory.reduce((sum, item) => sum + (Number(item.quantita) * Number(item.prezzo)), 0);
-            const lowStockCount = inventory.filter(item => item.quantita < 5).length;
-
-            document.getElementById('stat-total-types').innerText = totalTypes;
-            document.getElementById('stat-total-pieces').innerText = totalPieces;
-            document.getElementById('stat-total-value').innerText = `\u20ac ${totalValue.toFixed(2)}`;
-            document.getElementById('stat-low-stock').innerText = lowStockCount;
-        }
-
-        function renderCabinets() {
-            const grid = document.getElementById('cabinets-grid');
+        function renderSheet() {
+            const grid = document.getElementById('labels-grid');
             grid.innerHTML = '';
 
-            const cabinetsMap = {};
-            inventory.forEach(item => {
-                const box = item.contenitore || "Senza Contenitore";
-                if (!cabinetsMap[box]) cabinetsMap[box] = {};
-                const drawer = item.cassetto || "Generale";
-                if (!cabinetsMap[box][drawer]) cabinetsMap[box][drawer] = [];
-                cabinetsMap[box][drawer].push(item);
-            });
+            const selectedBox = document.getElementById('filter-container-select').value;
+            const params = new URLSearchParams(window.location.search);
+            const targetDrawer = params.get('drawer');
 
-            const keys = Object.keys(cabinetsMap);
-            if (keys.length === 0) {
-                grid.innerHTML = `
-                    <div class="col-span-full p-10 text-center flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 rounded-2xl border border-slate-200 dark:border-slate-800">
-                        <div class="w-12 h-12 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-2 text-base">
-                            <i class="fa-solid fa-cubes"></i>
+            let filtered = allItemsToPrint;
+            if (selectedBox) {
+                filtered = filtered.filter(i => i.box === selectedBox);
+            }
+
+            const widthMm = parseFloat(document.getElementById('custom-width').value) || 60;
+            const heightMm = parseFloat(document.getElementById('custom-height').value) || 40;
+
+            filtered.forEach((item, index) => {
+                const labelCard = document.createElement('div');
+                const widthPx = widthMm * 3.2;
+                const heightPx = heightMm * 3.2;
+
+                const isSingleTarget = targetDrawer && item.drawer === targetDrawer;
+
+                labelCard.className = `label-card bg-white text-slate-900 border border-slate-300 rounded-lg p-2 flex flex-row items-center gap-2 shadow-2xs relative overflow-hidden ${isSingleTarget ? 'single-target' : ''}`;
+                labelCard.style.width = `${widthPx}px`;
+                labelCard.style.height = `${heightPx}px`;
+                labelCard.style.boxSizing = 'border-box';
+
+                const qrId = `qr-code-${index}`;
+                
+                labelCard.innerHTML = `
+                    <div id="${qrId}" class="shrink-0 flex items-center justify-center"></div>
+                    <div class="flex flex-col justify-center overflow-hidden flex-1">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-1 text-[9px] font-bold text-indigo-700 uppercase tracking-wider">
+                                <i class="fa-solid fa-microchip"></i> BOM-Trace
+                            </div>
+                            <button onclick="printSingleLabel('${escapeHTML(item.box)}', '${escapeHTML(item.drawer)}')" class="no-print text-[9px] bg-slate-100 hover:bg-indigo-600 hover:text-white px-1.5 py-0.5 rounded text-slate-600 transition-colors" title="Stampa solo questa">
+                                <i class="fa-solid fa-print"></i> Stampa Singola
+                            </button>
                         </div>
-                        <h4 class="font-semibold text-xs text-slate-700 dark:text-slate-300">Nessun contenitore registrato</h4>
-                        <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5">Usa il pulsante "Nuovo Contenitore" per crearne uno.</p>
+                        <div class="font-bold text-[11px] text-slate-900 leading-tight truncate mt-0.5">${escapeHTML(item.box)}</div>
+                        <div class="text-[10px] text-slate-600 font-semibold truncate">${escapeHTML(item.drawer)}</div>
                     </div>
                 `;
-                return;
-            }
+                grid.appendChild(labelCard);
 
-            keys.forEach(boxName => {
-                const drawers = cabinetsMap[boxName];
-                const drawerNames = Object.keys(drawers);
-                const totalItemsInBox = Object.values(drawers).reduce((acc, arr) => acc + arr.reduce((s, i) => s + Number(i.quantita), 0), 0);
-                
-                const card = document.createElement('div');
-                card.className = "bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-3 shadow-2xs";
-                
-                let drawersHtml = '';
-                drawerNames.forEach(drawerName => {
-                    const items = drawers[drawerName];
-                    
-                    let itemsHtml = '';
-                    items.forEach(item => {
-                        itemsHtml += `
-                            <div class="flex items-center justify-between p-2 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
-                                <div>
-                                    <span class="font-bold text-slate-900 dark:text-white">${escapeHTML(item.name)}</span>
-                                    <div class="text-[10px] text-slate-500 dark:text-slate-400">Valore: <span class="font-semibold">${escapeHTML(item.valore)}</span> | Slot: ${escapeHTML(item.divisore || '-')}</div>
-                                </div>
-                                <span class="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold">${item.quantita} pz</span>
-                            </div>
-                        `;
-                    });
-
-                    if (items.length === 0) {
-                        itemsHtml = `<div class="text-[11px] text-slate-400 italic py-1 px-2">Cassetto vuoto</div>`;
+                setTimeout(() => {
+                    const qrEl = document.getElementById(qrId);
+                    if (qrEl) {
+                        qrEl.innerHTML = '';
+                        const qrSize = Math.min(heightPx - 16, 65);
+                        const qrData = JSON.stringify({ contenitore: item.box, cassetto: item.drawer });
+                        new QRCode(qrEl, {
+                            text: qrData,
+                            width: qrSize,
+                            height: qrSize,
+                            colorDark: "#0f172a",
+                            colorLight: "#ffffff",
+                            correctLevel: QRCode.CorrectLevel.M
+                        });
                     }
-
-                    drawersHtml += `
-                        <div class="flex flex-col gap-2 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
-                            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
-                                <div>
-                                    <span class="font-bold text-xs text-slate-800 dark:text-slate-200"><i class="fa-solid fa-box-archive text-indigo-500 mr-1"></i> ${escapeHTML(drawerName)}</span>
-                                    <span class="text-[10px] text-slate-400 block">${items.length} articoli</span>
-                                </div>
-                                <button onclick='showLabelModal(${JSON.stringify(boxName)}, ${JSON.stringify(drawerName)})' class="px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 font-semibold text-[11px] flex items-center gap-1.5 transition-colors">
-                                    <i class="fa-solid fa-qrcode"></i> Etichetta
-                                </button>
-                            </div>
-                            <div class="flex flex-col gap-1.5">
-                                ${itemsHtml}
-                            </div>
-                        </div>
-                    `;
-                });
-
-                card.innerHTML = `
-                    <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
-                        <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-box text-indigo-600 text-base"></i>
-                            <h3 class="font-bold text-sm text-slate-900 dark:text-white">${escapeHTML(boxName)}</h3>
-                        </div>
-                        <div class="flex items-center gap-1.5">
-                            <span class="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">${drawerNames.length} comparti (${totalItemsInBox} pz)</span>
-                            <button onclick="deleteContainer(${JSON.stringify(boxName)})" title="Elimina Contenitore" class="w-7 h-7 rounded-lg text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/40 flex items-center justify-center transition-colors"><i class="fa-solid fa-trash text-xs"></i></button>
-                        </div>
-                    </div>
-                    <div class="flex flex-col gap-2.5 max-h-72 overflow-y-auto pr-0.5">
-                        ${drawersHtml}
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
-        }
-
-        function renderStatsTab() {
-            const container = document.getElementById('stats-by-sigla');
-            if (!container) return;
-            container.innerHTML = '';
-
-            const statsMap = {};
-            inventory.forEach(item => {
-                const sigla = item.sigla || 'MISC';
-                if (!statsMap[sigla]) {
-                    statsMap[sigla] = { count: 0, pieces: 0, value: 0 };
-                }
-                statsMap[sigla].count += 1;
-                statsMap[sigla].pieces += Number(item.quantita);
-                statsMap[sigla].value += Number(item.quantita) * Number(item.prezzo);
+                }, 50);
             });
 
-            const keys = Object.keys(statsMap);
-            if (keys.length === 0) {
-                container.innerHTML = `<span class="text-xs text-slate-400">Nessun dato disponibile</span>`;
-                return;
-            }
+            document.getElementById('label-count-badge').innerText = `${filtered.length} etichette visualizzate`;
 
-            keys.forEach(sigla => {
-                const data = statsMap[sigla];
-                const row = document.createElement('div');
-                row.className = "flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs";
-                row.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <span class="px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold">${sigla}</span>
-                        <span class="text-slate-600 dark:text-slate-300 font-medium">${data.count} tipi (${data.pieces} pz)</span>
-                    </div>
-                    <span class="font-bold text-slate-900 dark:text-white">&euro; ${data.value.toFixed(2)}</span>
-                `;
-                container.appendChild(row);
-            });
-        }
-
-        function showLabelModal(boxName, drawerName) {
-            document.getElementById('label-box-name').innerText = boxName;
-            document.getElementById('label-drawer-name').innerText = drawerName;
-            
-            const qrContainer = document.getElementById('qrcode-container');
-            qrContainer.innerHTML = '';
-            
-            const qrData = JSON.stringify({ contenitore: boxName, cassetto: drawerName });
-            new QRCode(qrContainer, {
-                text: qrData,
-                width: 110,
-                height: 110,
-                colorDark: "#0f172a",
-                colorLight: "#ffffff",
-                correctLevel: QRCode.CorrectLevel.H
-            });
-
-            const modal = document.getElementById('label-modal');
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closeLabelModal() {
-            const modal = document.getElementById('label-modal');
-            modal.classList.remove('flex');
-            modal.classList.add('hidden');
-        }
-
-        function openContainerModal() {
-            document.getElementById('container-form').reset();
-            const modal = document.getElementById('container-modal');
-            toggleContainerFields();
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closeContainerModal() {
-            const modal = document.getElementById('container-modal');
-            modal.classList.remove('flex');
-            modal.classList.add('hidden');
-        }
-
-        function toggleContainerFields() {
-            const type = document.getElementById('gen-box-type').value;
-            const cassettieraFields = document.getElementById('fields-cassettiera');
-            const organizerFields = document.getElementById('fields-organizer');
-
-            if (type === 'cassettiera') {
-                cassettieraFields.classList.remove('hidden');
-                cassettieraFields.classList.add('grid');
-                organizerFields.classList.add('hidden');
-            } else if (type === 'organizer') {
-                cassettieraFields.classList.add('hidden');
-                organizerFields.classList.remove('hidden');
-            } else {
-                // scatola semplice
-                cassettieraFields.classList.add('hidden');
-                organizerFields.classList.add('hidden');
+            if (targetDrawer) {
+                document.body.classList.add('print-single');
             }
         }
 
-        function saveNewContainer(event) {
-            event.preventDefault();
-            const boxName = document.getElementById('gen-box-name').value.trim();
-            const type = document.getElementById('gen-box-type').value;
-
-            if (!boxName) return;
-
-            // Check if box already exists
-            const existingBoxes = [...new Set(inventory.map(i => i.contenitore))];
-            
-            if (type === 'cassettiera') {
-                const rows = parseInt(document.getElementById('gen-rows').value) || 3;
-                const cols = parseInt(document.getElementById('gen-cols').value) || 4;
-                
-                // Add placeholder items for each drawer to anchor them in inventory
-                for (let r = 1; r <= rows; r++) {
-                    for (let c = 1; c <= cols; c++) {
-                        const drawerName = `Riga ${r} - Cassetto ${c}`;
-                        // Check if this drawer already has items
-                        const hasDrawer = inventory.some(i => i.contenitore === boxName && i.cassetto === drawerName);
-                        if (!hasDrawer) {
-                            // Add a dummy anchor or just leave empty by checking
-                        }
-                    }
-                }
-                // To make sure empty container displays, we can add a dummy item or record an empty marker if needed, 
-                // but our inventory groups by item.contenitore and item.cassetto. If we want empty drawers to show up, 
-                // we can add an empty marker item or ensure components are placed. Let's add a virtual anchor component if none exists.
-            } else if (type === 'organizer') {
-                const compartments = parseInt(document.getElementById('gen-compartments').value) || 6;
-                for (let s = 1; s <= compartments; s++) {
-                    const drawerName = `Scomparto ${s}`;
-                    // anchor
-                }
-            } else {
-                // scatola semplice
-                const drawerName = `Scomparto Unico`;
-            }
-
-            // Create an anchor item so the container appears even if no parts are inside yet
-            const anchorId = 'anchor-' + Date.now();
-            inventory.push({
-                id: anchorId,
-                name: `[Struttura] ${boxName} - Pronto per inserimento`,
-                sigla: "MISC",
-                tipo: "Contenitore",
-                valore: "Vuoto",
-                prezzo: 0,
-                quantita: 0,
-                contenitore: boxName,
-                cassetto: type === 'scatola' ? 'Scomparto Unico' : (type === 'cassettiera' ? 'Riga 1 - Cassetto 1' : 'Scomparto 1'),
-                divisore: 'Generale'
-            });
-
-            saveData();
-            renderCabinets();
-            closeContainerModal();
-            showToast(`Contenitore "${boxName}" generato con successo!`, "success");
-        }
-
-        function deleteContainer(boxName) {
-            if (confirm(`Sei sicuro di voler rimuovere il contenitore "${boxName}" e tutti i componenti associati?`)) {
-                inventory = inventory.filter(i => i.contenitore !== boxName);
-                saveData();
-                renderInventory();
-                renderCabinets();
-                showToast("Contenitore eliminato", "error");
-            }
-        }
-
-        function handleSuccessfulScan(decodedText) {
-            try {
-                let data = JSON.parse(decodedText);
-                if (data.contenitore) {
-                    lastScannedLocation = data;
-                    document.getElementById('scan-result-text').innerText = `${data.contenitore} > ${data.cassetto || 'Generale'}`;
-                    document.getElementById('scan-result-box').classList.remove('hidden');
-                    if (html5QrCode) {
-                        html5QrCode.stop().catch(() => {});
-                    }
-                    showToast("QR Code scansionato con successo!", "success");
-                    return;
-                }
-            } catch(e) {
-                // If text is raw string location format
-                if (decodedText.length > 0) {
-                    lastScannedLocation = { contenitore: decodedText, cassetto: "Cassetto 1" };
-                    document.getElementById('scan-result-text').innerText = decodedText;
-                    document.getElementById('scan-result-box').classList.remove('hidden');
-                    if (html5QrCode) {
-                        html5QrCode.stop().catch(() => {});
-                    }
-                    showToast("QR Code scansionato!", "success");
-                    return;
-                }
-            }
-            showToast("QR Code non riconosciuto come etichetta BOM-Trace", "error");
-        }
-
-        function useScannedLocation() {
-            if (!lastScannedLocation) return;
-            
-            closeScannerModal();
-
-            if (scannerActiveContext === 'component-modal') {
-                document.getElementById('pos-contenitore').value = lastScannedLocation.contenitore || '';
-                document.getElementById('pos-cassetto').value = lastScannedLocation.cassetto || '';
-                showToast("Posizione applicata al componente!", "success");
-            } else {
-                // Main context: open new component modal pre-filled with scanned location
-                openModal();
-                document.getElementById('pos-contenitore').value = lastScannedLocation.contenitore || '';
-                document.getElementById('pos-cassetto').value = lastScannedLocation.cassetto || '';
-                showToast("Nuovo componente preimpostato con la posizione bippata!", "success");
-            }
-        }
-
-        function openModal(editId = null) {
-            const modal = document.getElementById('component-modal');
-            const title = document.getElementById('modal-title');
-            const form = document.getElementById('component-form');
-            form.reset();
-            document.getElementById('comp-id').value = '';
-
-            if (editId) {
-                title.innerHTML = `<i class="fa-solid fa-pen-to-square text-indigo-600"></i> Modifica Componente`;
-                const item = inventory.find(i => i.id === editId);
-                if (item) {
-                    document.getElementById('comp-id').value = item.id;
-                    document.getElementById('comp-name').value = item.name;
-                    document.getElementById('comp-sigla').value = item.sigla;
-                    document.getElementById('comp-tipo').value = item.tipo;
-                    document.getElementById('comp-valore').value = item.valore;
-                    document.getElementById('comp-prezzo').value = item.prezzo;
-                    document.getElementById('comp-quantita').value = item.quantita;
-                    document.getElementById('pos-contenitore').value = item.contenitore;
-                    document.getElementById('pos-cassetto').value = item.cassetto || '';
-                    document.getElementById('pos-divisore').value = item.divisore || '';
-                }
-            } else {
-                title.innerHTML = `<i class="fa-solid fa-circle-plus text-indigo-600"></i> Nuovo Componente`;
-            }
-
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-        }
-
-        function closeModal() {
-            const modal = document.getElementById('component-modal');
-            modal.classList.remove('flex');
-            modal.classList.add('hidden');
-        }
-
-        function saveComponent(event) {
-            event.preventDefault();
-            const id = document.getElementById('comp-id').value;
-            const newItem = {
-                id: id ? id : 'comp-' + Date.now(),
-                name: document.getElementById('comp-name').value.trim(),
-                sigla: document.getElementById('comp-sigla').value,
-                tipo: document.getElementById('comp-tipo').value.trim(),
-                valore: document.getElementById('comp-valore').value.trim(),
-                prezzo: parseFloat(document.getElementById('comp-prezzo').value) || 0,
-                quantita: parseInt(document.getElementById('comp-quantita').value) || 0,
-                contenitore: document.getElementById('pos-contenitore').value.trim(),
-                cassetto: document.getElementById('pos-cassetto').value.trim(),
-                divisore: document.getElementById('pos-divisore').value.trim()
-            };
-
-            if (id) {
-                const index = inventory.findIndex(i => i.id === id);
-                if (index !== -1) {
-                    inventory[index] = newItem;
-                    showToast("Componente aggiornato", "success");
-                }
-            } else {
-                inventory.unshift(newItem);
-                showToast("Componente aggiunto", "success");
-            }
-
-            saveData();
-            closeModal();
-            filterInventory();
-        }
-
-        function editComponent(id) {
-            openModal(id);
-        }
-
-        function deleteComponent(id) {
-            inventory = inventory.filter(i => i.id !== id);
-            saveData();
-            filterInventory();
-            showToast("Componente eliminato", "error");
-        }
-
-        function quickUpdateQty(id, change) {
-            const item = inventory.find(i => i.id === id);
-            if (item) {
-                item.quantita = Math.max(0, item.quantita + change);
-                saveData();
-                filterInventory();
-            }
-        }
-
-        function exportJSON() {
-            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inventory, null, 2));
-            const dlAnchor = document.createElement('a');
-            dlAnchor.setAttribute("href", dataStr);
-            dlAnchor.setAttribute("download", `bom_trace_magazzino_${new Date().toISOString().slice(0,10)}.json`);
-            document.body.appendChild(dlAnchor);
-            dlAnchor.click();
-            dlAnchor.remove();
-            showToast("Backup JSON esportato", "success");
-        }
-
-        function importJSON(event) {
-            const fileReader = new FileReader();
-            if (event.target.files[0]) {
-                fileReader.readAsText(event.target.files[0], "UTF-8");
-                fileReader.onload = function(e) {
-                    try {
-                        const imported = JSON.parse(e.target.result);
-                        if (Array.isArray(imported)) {
-                            inventory = imported;
-                            saveData();
-                            filterInventory();
-                            showToast("Magazzino ripristinato con successo", "success");
-                        }
-                    } catch(err) {
-                        showToast("File JSON non valido", "error");
-                    }
-                }
-            }
-        }
-
-        function exportCSV() {
-            let csvContent = "data:text/csv;charset=utf-8,ID,Componente,Sigla,Tipo,Valore,PrezzoUnitario,Quantita,Contenitore,Cassetto,Divisore\r\n";
-            inventory.forEach(item => {
-                const row = [
-                    item.id,
-                    `"${item.name.replace(/"/g, '""')}"`,
-                    item.sigla,
-                    `"${item.tipo.replace(/"/g, '""')}"`,
-                    `"${item.valore.replace(/"/g, '""')}"`,
-                    item.prezzo,
-                    item.quantita,
-                    `"${item.contenitore.replace(/"/g, '""')}"`,
-                    `"${(item.cassetto || '').replace(/"/g, '""')}"`,
-                    `"${(item.divisore || '').replace(/"/g, '""')}"`
-                ];
-                csvContent += row.join(",") + "\r\n";
-            });
-
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `bom_trace_export_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            link.remove();
-            showToast("Esportazione CSV completata", "success");
-        }
-
-        function showToast(message, type = 'success') {
-            const toast = document.getElementById('toast-notification');
-            const msg = document.getElementById('toast-message');
-            const icon = document.getElementById('toast-icon');
-
-            msg.innerText = message;
-            if (type === 'success') {
-                icon.className = "fa-solid fa-circle-check text-emerald-400";
-            } else {
-                icon.className = "fa-solid fa-circle-exclamation text-rose-400";
-            }
-
-            toast.classList.remove('translate-y-24', 'opacity-0');
-            toast.classList.add('translate-y-0', 'opacity-100');
-
+        function printSingleLabel(box, drawer) {
+            const url = new URL(window.location.href);
+            url.searchParams.set('box', box);
+            url.searchParams.set('drawer', drawer);
+            window.history.replaceState({}, '', url);
+            document.body.classList.add('print-single');
+            document.getElementById('filter-container-select').value = box;
+            renderSheet();
             setTimeout(() => {
-                toast.classList.remove('translate-y-0', 'opacity-100');
-                toast.classList.add('translate-y-24', 'opacity-0');
-            }, 3000);
+                window.print();
+            }, 300);
         }
 
         function escapeHTML(str) {
