@@ -10,6 +10,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <!-- Google Fonts Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <!-- QRCode.js for generating QR code labels -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <!-- Html5-qrcode for scanning QR codes via camera -->
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script>
         tailwind.config = {
             darkMode: 'class',
@@ -36,6 +40,20 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+        @media print {
+            body * {
+                visibility: hidden;
+            }
+            #printable-label-area, #printable-label-area * {
+                visibility: visible;
+            }
+            #printable-label-area {
+                position: absolute;
+                left: 0;
+                top: 0;
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body class="h-full bg-slate-100 dark:bg-slate-950 text-slate-800 dark:text-slate-100 flex flex-col font-sans transition-colors duration-200">
@@ -56,6 +74,9 @@
             
             <!-- Desktop Action Buttons -->
             <div class="hidden md:flex items-center space-x-3">
+                <button onclick="openScannerModal()" class="inline-flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm transition-all active:scale-95">
+                    <i class="fa-solid fa-qrcode"></i> Bippa QR Code
+                </button>
                 <button onclick="openModal()" class="inline-flex items-center gap-2 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 dark:hover:bg-slate-600 text-white text-xs font-semibold px-3.5 py-2 rounded-xl shadow-sm transition-all active:scale-95">
                     <i class="fa-solid fa-plus"></i> Nuovo Componente
                 </button>
@@ -68,6 +89,9 @@
 
             <!-- Mobile Quick Actions -->
             <div class="flex md:hidden items-center space-x-1.5">
+                <button onclick="openScannerModal()" class="w-9 h-9 bg-indigo-600 text-white rounded-xl flex items-center justify-center shadow-md">
+                    <i class="fa-solid fa-qrcode text-sm"></i>
+                </button>
                 <button onclick="toggleDarkMode()" class="p-2 rounded-xl text-slate-600 dark:text-slate-300">
                     <i class="fa-solid fa-moon dark:hidden text-base"></i>
                     <i class="fa-solid fa-sun hidden dark:inline text-base text-amber-400"></i>
@@ -206,11 +230,13 @@
         <!-- TAB 2: CABINETS & LOCATIONS EXPLORER -->
         <div id="view-cabinets" class="hidden flex-col gap-4">
             <div class="bg-white dark:bg-slate-900 p-4 sm:p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xs flex flex-col gap-4">
-                <div>
-                    <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
-                        <i class="fa-solid fa-cubes text-indigo-600"></i> Mappa Contenitori & Cassetti
-                    </h2>
-                    <p class="text-xs text-slate-500 dark:text-slate-400">Esplora i componenti raggruppati per contenitore fisico e cassetto</p>
+                <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div>
+                        <h2 class="text-base sm:text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                            <i class="fa-solid fa-cubes text-indigo-600"></i> Mappa Contenitori & Etichette QR
+                        </h2>
+                        <p class="text-xs text-slate-500 dark:text-slate-400">Esplora i contenitori e stampa le etichette con QR code per i cassetti</p>
+                    </div>
                 </div>
                 <div id="cabinets-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3.5 mt-1">
                     <!-- Populated via JS -->
@@ -260,8 +286,14 @@
             <i class="fa-solid fa-cubes text-lg"></i>
             <span class="text-[10px] font-semibold">Contenitori</span>
         </button>
-        <button onclick="openModal()" class="flex flex-col items-center gap-1 text-white -mt-5">
+        <button onclick="openScannerModal()" class="flex flex-col items-center gap-1 text-white -mt-5">
             <div class="w-12 h-12 bg-indigo-600 hover:bg-indigo-700 rounded-full shadow-lg shadow-indigo-500/40 flex items-center justify-center text-xl transition-transform active:scale-95">
+                <i class="fa-solid fa-qrcode"></i>
+            </div>
+            <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400">Bippa QR</span>
+        </button>
+        <button onclick="openModal()" class="flex flex-col items-center gap-1 text-white -mt-5">
+            <div class="w-12 h-12 bg-slate-800 hover:bg-slate-900 dark:bg-slate-700 rounded-full shadow-lg flex items-center justify-center text-xl transition-transform active:scale-95">
                 <i class="fa-solid fa-plus"></i>
             </div>
             <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-400">Nuovo</span>
@@ -272,6 +304,71 @@
         </button>
     </nav>
 
+    <!-- QR CODE SCANNER MODAL -->
+    <div id="scanner-modal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs hidden items-center justify-center p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all flex flex-col">
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                <h3 class="font-bold text-sm sm:text-base text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-qrcode text-indigo-600"></i> Scanner QR Code Cassetto
+                </h3>
+                <button onclick="closeScannerModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            <div class="p-4 sm:p-6 flex flex-col gap-4 items-center">
+                <p class="text-xs text-slate-500 dark:text-slate-400 text-center">Inquadra il QR code stampato sull'etichetta del cassetto per caricare rapidamente la posizione nel nuovo componente.</p>
+                <div id="reader" class="w-full rounded-2xl overflow-hidden bg-slate-900 min-h-[240px]"></div>
+                <div id="scan-result-box" class="hidden w-full p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 text-xs text-emerald-800 dark:text-emerald-200 flex items-center justify-between">
+                    <div>
+                        <span class="font-bold block">Posizione Rilevata:</span>
+                        <span id="scan-result-text" class="font-mono"></span>
+                    </div>
+                    <button onclick="useScannedLocation()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-lg text-xs shadow-sm">Usa Posizione</button>
+                </div>
+                <div class="w-full flex items-center justify-end gap-2 pt-2">
+                    <button type="button" onclick="closeScannerModal()" class="px-4 py-2.5 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                        Chiudi
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR CODE LABEL GENERATOR & PRINT MODAL -->
+    <div id="label-modal" class="fixed inset-0 z-50 bg-slate-900/70 backdrop-blur-xs hidden items-center justify-center p-3 sm:p-4">
+        <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-sm w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all flex flex-col">
+            <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
+                <h3 class="font-bold text-sm text-slate-900 dark:text-white flex items-center gap-2">
+                    <i class="fa-solid fa-tag text-indigo-600"></i> Etichetta Cassetto QR
+                </h3>
+                <button onclick="closeLabelModal()" class="w-8 h-8 rounded-full flex items-center justify-center text-slate-400 hover:bg-slate-200 dark:hover:bg-slate-800 transition-colors">
+                    <i class="fa-solid fa-xmark text-sm"></i>
+                </button>
+            </div>
+            <div class="p-6 flex flex-col items-center gap-4">
+                <!-- Printable Label Card -->
+                <div id="printable-label-area" class="w-full bg-white text-slate-900 p-4 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center gap-3 shadow-xs">
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid fa-microchip text-indigo-600"></i>
+                        <span class="font-bold text-xs uppercase tracking-wider text-slate-700">BOM-Trace Label</span>
+                    </div>
+                    <div id="qrcode-container" class="bg-white p-2 rounded-xl shadow-xs border border-slate-100 flex items-center justify-center"></div>
+                    <div class="text-center">
+                        <div id="label-box-name" class="font-bold text-sm text-slate-900"></div>
+                        <div id="label-drawer-name" class="text-xs text-slate-600 font-semibold"></div>
+                    </div>
+                </div>
+                
+                <div class="w-full flex items-center justify-center gap-2.5 pt-2">
+                    <button type="button" onclick="window.print()" class="w-full py-2.5 rounded-xl text-xs font-semibold bg-indigo-600 hover:bg-indigo-700 text-white shadow-sm flex items-center justify-center gap-2 transition-all active:scale-95">
+                        <i class="fa-solid fa-print"></i> Stampa Etichetta
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- COMPONENT EDIT/ADD MODAL -->
     <div id="component-modal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs hidden items-center justify-center p-3 sm:p-4">
         <div class="bg-white dark:bg-slate-900 rounded-3xl max-w-lg w-full shadow-2xl border border-slate-200 dark:border-slate-800 overflow-hidden transform transition-all flex flex-col max-h-[90vh]">
             <div class="flex items-center justify-between px-5 py-3.5 border-b border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-950">
@@ -341,9 +438,14 @@
                 </div>
 
                 <div class="p-3.5 rounded-2xl bg-indigo-50/60 dark:bg-indigo-950/30 border border-indigo-100 dark:border-indigo-900/50 flex flex-col gap-2.5">
-                    <span class="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
-                        <i class="fa-solid fa-location-dot"></i> Posizione Fisica Gerarchica
-                    </span>
+                    <div class="flex items-center justify-between">
+                        <span class="text-[11px] font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider flex items-center gap-1.5">
+                            <i class="fa-solid fa-location-dot"></i> Posizione Fisica Gerarchica
+                        </span>
+                        <button type="button" onclick="openScannerModalFromModal()" class="px-2.5 py-1 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-semibold flex items-center gap-1 shadow-xs">
+                            <i class="fa-solid fa-qrcode"></i> Bippa QR
+                        </button>
+                    </div>
                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                         <div>
                             <label class="block text-[10px] font-medium text-slate-600 dark:text-slate-400 mb-0.5">Contenitore / Box *</label>
@@ -448,6 +550,9 @@
         ];
 
         let inventory = [];
+        let html5QrCode = null;
+        let lastScannedLocation = null;
+        let scannerActiveContext = 'main'; // 'main' or 'component-modal'
 
         window.onload = function() {
             loadData();
@@ -698,8 +803,10 @@
             const cabinetsMap = {};
             inventory.forEach(item => {
                 const box = item.contenitore || "Senza Contenitore";
-                if (!cabinetsMap[box]) cabinetsMap[box] = [];
-                cabinetsMap[box].push(item);
+                if (!cabinetsMap[box]) cabinetsMap[box] = {};
+                const drawer = item.cassetto || "Generale";
+                if (!cabinetsMap[box][drawer]) cabinetsMap[box][drawer] = [];
+                cabinetsMap[box][drawer].push(item);
             });
 
             const keys = Object.keys(cabinetsMap);
@@ -709,21 +816,45 @@
             }
 
             keys.forEach(boxName => {
-                const items = cabinetsMap[boxName];
-                const totalItemsInBox = items.reduce((sum, i) => sum + Number(i.quantita), 0);
+                const drawers = cabinetsMap[boxName];
+                const drawerNames = Object.keys(drawers);
+                const totalItemsInBox = Object.values(drawers).reduce((acc, arr) => acc + arr.reduce((s, i) => s + Number(i.quantita), 0), 0);
                 
                 const card = document.createElement('div');
-                card.className = "bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-2.5";
+                card.className = "bg-slate-50 dark:bg-slate-950 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 flex flex-col gap-3";
                 
-                let itemsHtml = '';
-                items.forEach(item => {
-                    itemsHtml += `
-                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
-                            <div>
-                                <span class="font-bold text-slate-900 dark:text-white">${escapeHTML(item.name)}</span>
-                                <div class="text-[11px] text-slate-500 dark:text-slate-400">Valore: <span class="font-semibold">${escapeHTML(item.valore)}</span> | ${escapeHTML(item.cassetto || '-')} / ${escapeHTML(item.divisore || '-')}</div>
+                let drawersHtml = '';
+                drawerNames.forEach(drawerName => {
+                    const items = drawers[drawerName];
+                    const qrData = JSON.stringify({ contenitore: boxName, cassetto: drawerName });
+                    
+                    let itemsHtml = '';
+                    items.forEach(item => {
+                        itemsHtml += `
+                            <div class="flex items-center justify-between p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 text-xs">
+                                <div>
+                                    <span class="font-bold text-slate-900 dark:text-white">${escapeHTML(item.name)}</span>
+                                    <div class="text-[11px] text-slate-500 dark:text-slate-400">Valore: <span class="font-semibold">${escapeHTML(item.valore)}</span> | Slot: ${escapeHTML(item.divisore || '-')}</div>
+                                </div>
+                                <span class="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold">${item.quantita} pz</span>
                             </div>
-                            <span class="px-2 py-0.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300 font-bold">${item.quantita} pz</span>
+                        `;
+                    });
+
+                    drawersHtml += `
+                        <div class="flex flex-col gap-2 p-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">
+                            <div class="flex items-center justify-between border-b border-slate-100 dark:border-slate-800 pb-2">
+                                <div>
+                                    <span class="font-bold text-xs text-slate-800 dark:text-slate-200"><i class="fa-solid fa-box-archive text-indigo-500 mr-1"></i> ${escapeHTML(drawerName)}</span>
+                                    <span class="text-[10px] text-slate-400 block">${items.length} articoli</span>
+                                </div>
+                                <button onclick='showLabelModal(${JSON.stringify(boxName)}, ${JSON.stringify(drawerName)})' class="px-2.5 py-1.5 rounded-lg bg-indigo-50 dark:bg-indigo-950 text-indigo-600 dark:text-indigo-400 hover:bg-indigo-100 font-semibold text-[11px] flex items-center gap-1.5 transition-colors">
+                                    <i class="fa-solid fa-qrcode"></i> Etichetta QR
+                                </button>
+                            </div>
+                            <div class="flex flex-col gap-1.5">
+                                ${itemsHtml}
+                            </div>
                         </div>
                     `;
                 });
@@ -731,13 +862,13 @@
                 card.innerHTML = `
                     <div class="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-2.5">
                         <div class="flex items-center gap-2">
-                            <i class="fa-solid fa-box text-indigo-600"></i>
-                            <h3 class="font-bold text-xs sm:text-sm text-slate-900 dark:text-white">${escapeHTML(boxName)}</h3>
+                            <i class="fa-solid fa-box text-indigo-600 text-base"></i>
+                            <h3 class="font-bold text-sm text-slate-900 dark:text-white">${escapeHTML(boxName)}</h3>
                         </div>
-                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">${items.length} art. (${totalItemsInBox} pz)</span>
+                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300">${drawerNames.length} cassetti (${totalItemsInBox} pz)</span>
                     </div>
-                    <div class="flex flex-col gap-2 max-h-56 overflow-y-auto pr-0.5">
-                        ${itemsHtml}
+                    <div class="flex flex-col gap-2.5 max-h-72 overflow-y-auto pr-0.5">
+                        ${drawersHtml}
                     </div>
                 `;
                 grid.appendChild(card);
@@ -776,6 +907,136 @@
                 `;
                 container.appendChild(row);
             });
+        }
+
+        function showLabelModal(boxName, drawerName) {
+            const modal = document.getElementById('label-modal');
+            document.getElementById('label-box-name').innerText = boxName;
+            document.getElementById('label-drawer-name').innerText = drawerName;
+            
+            const qrContainer = document.getElementById('qrcode-container');
+            qrContainer.innerHTML = '';
+            
+            const qrData = JSON.stringify({ contenitore: boxName, cassetto: drawerName });
+            new QRCode(qrContainer, {
+                text: qrData,
+                width: 140,
+                height: 140,
+                colorDark : "#0f172a",
+                colorLight : "#ffffff",
+                correctLevel : QRCode.CorrectLevel.M
+            });
+
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        function closeLabelModal() {
+            const modal = document.getElementById('label-modal');
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+
+        function openScannerModal(context = 'main') {
+            scannerActiveContext = context;
+            const modal = document.getElementById('scanner-modal');
+            document.getElementById('scan-result-box').classList.add('hidden');
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+
+            setTimeout(() => {
+                if (html5QrCode) {
+                    html5QrCode.stop().catch(() => {}).finally(() => {
+                        startScanner();
+                    });
+                } else {
+                    startScanner();
+                }
+            }, 300);
+        }
+
+        function openScannerModalFromModal() {
+            openScannerModal('component-modal');
+        }
+
+        function startScanner() {
+            html5QrCode = new Html5Qrcode("reader");
+            const config = { fps: 10, qrbox: { width: 220, height: 220 } };
+            html5QrCode.start(
+                { facingMode: "environment" },
+                config,
+                (decodedText, decodedResult) => {
+                    handleSuccessfulScan(decodedText);
+                },
+                (errorMessage) => {
+                    // Scanning frame errors can be ignored
+                }
+            ).catch(err => {
+                showToast("Impossibile avviare la fotocamera", "error");
+            });
+        }
+
+        function closeScannerModal() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    html5QrCode.clear();
+                }).catch(() => {}).finally(() => {
+                    const modal = document.getElementById('scanner-modal');
+                    modal.classList.remove('flex');
+                    modal.classList.add('hidden');
+                });
+            } else {
+                const modal = document.getElementById('scanner-modal');
+                modal.classList.remove('flex');
+                modal.classList.add('hidden');
+            }
+        }
+
+        function handleSuccessfulScan(decodedText) {
+            try {
+                let data = JSON.parse(decodedText);
+                if (data.contenitore) {
+                    lastScannedLocation = data;
+                    document.getElementById('scan-result-text').innerText = `${data.contenitore} > ${data.cassetto || 'Generale'}`;
+                    document.getElementById('scan-result-box').classList.remove('hidden');
+                    if (html5QrCode) {
+                        html5QrCode.stop().catch(() => {});
+                    }
+                    showToast("QR Code scansionato con successo!", "success");
+                    return;
+                }
+            } catch(e) {
+                // If text is raw string location format
+                if (decodedText.length > 0) {
+                    lastScannedLocation = { contenitore: decodedText, cassetto: "Cassetto 1" };
+                    document.getElementById('scan-result-text').innerText = decodedText;
+                    document.getElementById('scan-result-box').classList.remove('hidden');
+                    if (html5QrCode) {
+                        html5QrCode.stop().catch(() => {});
+                    }
+                    showToast("QR Code scansionato!", "success");
+                    return;
+                }
+            }
+            showToast("QR Code non riconosciuto come etichetta BOM-Trace", "error");
+        }
+
+        function useScannedLocation() {
+            if (!lastScannedLocation) return;
+            
+            closeScannerModal();
+
+            if (scannerActiveContext === 'component-modal') {
+                document.getElementById('pos-contenitore').value = lastScannedLocation.contenitore || '';
+                document.getElementById('pos-cassetto').value = lastScannedLocation.cassetto || '';
+                showToast("Posizione applicata al componente!", "success");
+            } else {
+                // Main context: open new component modal pre-filled with scanned location
+                openModal();
+                document.getElementById('pos-contenitore').value = lastScannedLocation.contenitore || '';
+                document.getElementById('pos-cassetto').value = lastScannedLocation.cassetto || '';
+                showToast("Nuovo componente preimpostato con la posizione bippata!", "success");
+            }
         }
 
         function openModal(editId = null) {
