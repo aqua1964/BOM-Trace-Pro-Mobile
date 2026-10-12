@@ -1449,8 +1449,9 @@
            SCANNER QR
         ============================================================ */
         let html5QrCode = null;
-        let scannerRunning = false;
-        let scannerSession = 0;
+        let scannerSession = 0;               // cambia a ogni apertura/chiusura: invalida le operazioni in coda
+        let scannerQueue = Promise.resolve(); // avvio e arresto della fotocamera vengono eseguiti uno alla volta
+        let scanHandled = false;
         let scannerContext = 'main';
         let lastScannedLocation = null;
         let lastBadScan = { text: '', at: 0 };
@@ -1489,44 +1490,78 @@
             await startScanner();
         }
 
-        async function startScanner() {
+        // La libreria non ammette un start() mentre lo stop() precedente non è finito
+        // ("Cannot clear while scan is ongoing"): per questo ogni operazione passa da una coda.
+        function queueScanner(task) {
+            const run = scannerQueue.then(() => task());
+            scannerQueue = run.catch(() => { /* la coda non si blocca mai */ });
+            return run;
+        }
+
+        // Ferma lo scanner e libera la fotocamera, anche se la libreria è rimasta in uno stato incoerente
+        async function releaseCamera() {
+            const inst = html5QrCode;
+            if (inst) {
+                try {
+                    const st = inst.getState(); // 2 = in scansione, 3 = in pausa
+                    if (st === 2 || st === 3) await inst.stop();
+                } catch (e) { /* ignora */ }
+                let clean = false;
+                try { inst.clear(); clean = true; } catch (e) { /* ancora attivo */ }
+                if (!clean) html5QrCode = null; // stato incoerente: la prossima volta si crea una nuova istanza
+            }
+            document.querySelectorAll('#reader video').forEach(v => {
+                try { if (v.srcObject) v.srcObject.getTracks().forEach(t => t.stop()); } catch (e) { /* ignora */ }
+            });
+            $('reader').innerHTML = '';
+        }
+
+        function startScanner() {
             const status = $('scanner-status');
             if (typeof Html5Qrcode === 'undefined') {
                 status.textContent = 'Libreria dello scanner non caricata: controlla la connessione e ricarica la pagina.';
-                return;
+                return Promise.resolve();
             }
             const session = ++scannerSession;
+            scanHandled = false;
             status.textContent = 'Avvio della fotocamera…';
-            try {
-                if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
-                await html5QrCode.start(
-                    { facingMode: 'environment' },
-                    { fps: 10, qrbox: (w, h) => { const s = Math.floor(Math.min(w, h) * 0.7); return { width: s, height: s }; } },
-                    onScanSuccess,
-                    () => { /* nessun QR nel fotogramma */ }
-                );
-                if (session !== scannerSession) { // il modal è stato chiuso mentre la camera si avviava
-                    try { await html5QrCode.stop(); } catch (e) { /* ignora */ }
-                    return;
+            return queueScanner(async () => {
+                if (session !== scannerSession) return; // chiuso o riaperto mentre era in coda
+                for (let attempt = 0; attempt < 2; attempt++) {
+                    try {
+                        await releaseCamera();
+                        if (!html5QrCode) html5QrCode = new Html5Qrcode('reader');
+                        await html5QrCode.start(
+                            { facingMode: 'environment' },
+                            { fps: 10, qrbox: (w, h) => { const s = Math.floor(Math.min(w, h) * 0.7); return { width: s, height: s }; } },
+                            onScanSuccess,
+                            () => { /* nessun QR nel fotogramma */ }
+                        );
+                        if (session !== scannerSession) { await releaseCamera(); return; } // chiuso durante l'avvio
+                        status.textContent = 'Inquadra il QR code…';
+                        return;
+                    } catch (err) {
+                        const msg = String(err && err.message ? err.message : err);
+                        await releaseCamera();
+                        if (attempt === 0 && /scan is ongoing|clear|transition|already/i.test(msg)) continue; // un nuovo tentativo con istanza pulita
+                        if (session === scannerSession) {
+                            status.textContent = /denied|permission|NotAllowed/i.test(msg)
+                                ? 'Accesso alla fotocamera negato: consentilo dalle impostazioni del browser.'
+                                : /NotFound|no camera|Requested device not found/i.test(msg)
+                                    ? 'Nessuna fotocamera trovata su questo dispositivo.'
+                                    : (location.protocol === 'http:' && location.hostname !== 'localhost'
+                                        ? 'La fotocamera richiede una connessione sicura (HTTPS).'
+                                        : 'Impossibile avviare la fotocamera: ' + msg);
+                        }
+                        return;
+                    }
                 }
-                scannerRunning = true;
-                status.textContent = 'Inquadra il QR code…';
-            } catch (err) {
-                const msg = String(err && err.message ? err.message : err);
-                status.textContent = /denied|permission|NotAllowed/i.test(msg)
-                    ? 'Accesso alla fotocamera negato: consentilo dalle impostazioni del browser.'
-                    : (location.protocol === 'http:' && location.hostname !== 'localhost'
-                        ? 'La fotocamera richiede una connessione sicura (HTTPS).'
-                        : 'Impossibile avviare la fotocamera: ' + msg);
-            }
+            });
         }
 
-        async function stopScanner() {
+        function stopScanner() {
             scannerSession++;
-            if (html5QrCode && scannerRunning) {
-                scannerRunning = false;
-                try { await html5QrCode.stop(); } catch (e) { /* ignora */ }
-            }
+            return queueScanner(releaseCamera);
         }
 
         function closeScannerModal() {
@@ -1535,6 +1570,7 @@
         }
 
         function onScanSuccess(decodedText) {
+            if (scanHandled) return; // lo scanner emette più letture prima di fermarsi
             const loc = parseLocation(decodedText);
             if (!loc) {
                 const now = Date.now();
@@ -1544,6 +1580,7 @@
                 }
                 return;
             }
+            scanHandled = true;
             lastScannedLocation = loc;
             $('scan-result-text').textContent = loc.cassetto ? `${loc.contenitore} > ${loc.cassetto}` : loc.contenitore;
             $('scan-result-box').classList.remove('hidden');
